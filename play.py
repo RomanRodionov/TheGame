@@ -36,7 +36,7 @@ max_enemy_health = 5
 downLine = 138
 damage_bul = 1
 damage_att = 3
-kills_to_boss = 50
+kills_to_boss = 25  ###
 
 w = 128
 h = 128
@@ -80,21 +80,22 @@ enemyAnimCount = 0  # Счетчик последовательности ани
 
 guncount = 20
 
+all_sprites = pygame.sprite.Group()
+
 
 def end():
-    pygame.mixer.music.stop()
     win_sound.play()
     congratulation.play()
     k1 = 0
     white = [255, 255, 255]
     font = pygame.font.Font(None, 60)
     font2 = pygame.font.Font(None, 100)
-    text1 = font.render("Congratulations!", True, white)
+    text1 = font.render("{}, congratulations!".format(player_name), True, white)
     text2 = font.render("You defeated the boss and won the game!", True, white)
     text3 = font.render("Your time:", True, white)
     text4 = font2.render(result, True, white)
     bg_coords = [0, xw]
-    while True:  # Стартовый экран
+    while True:
 
         clock.tick(30)
         k1 += 1
@@ -137,6 +138,45 @@ def draw_health():  # Отображение hp персонажа
                 window.blit(boss_health, (885 - x * 50, 130))
             else:
                 window.blit(diehealth, (885 - x * 50, 130))
+
+
+def draw_time():
+    result = round(time.clock() - start_time - pause_time)
+    result = str(result // 60) + ' min ' + str(result % 60) + ' sec'
+    font = pygame.font.Font(None, 40)
+    text = font.render(result, True, (255, 255, 255))
+    window.blit(text, (500, 10))
+
+
+class Particle(pygame.sprite.Sprite):
+    fire = [pygame.image.load('b.png')]
+    for scale in (9, 12, 22):
+        fire.append(pygame.transform.scale(fire[0], (scale, scale)))
+
+    def __init__(self, pos, dx, dy):
+        super().__init__(all_sprites)
+        self.screen_rect = (pos[0] - 75, pos[1] - 400, 140, 400)
+        self.image = random.choice(self.fire)
+        self.rect = self.image.get_rect()
+
+        self.velocity = [dx, dy]
+        self.rect.x, self.rect.y = pos
+        self.gravity = 1
+
+    def update(self):
+        self.velocity[1] += self.gravity
+        self.rect.x += self.velocity[0]
+        self.rect.y += self.velocity[1]
+        if not self.rect.colliderect(self.screen_rect):
+            self.kill()
+
+
+def create_particles(position):
+    particle_count = 20
+    ny = range(-20, 5)
+    nx = range(-5, 6)
+    for _ in range(particle_count):
+        Particle(position, random.choice(nx), random.choice(ny))
 
 
 class Enemy:
@@ -341,6 +381,7 @@ class Boss(Enemy):
         if len(self.bombs) > 0:
             for r in range(len(self.bombs)):
                 if self.bombs[r][1] >= 480:
+                    create_particles((self.bombs[r][0] + 64, self.bombs[r][1] + 64))
                     self.bomb_s.play()
                     if ((x <= self.bombs[r][0] and (x + 128 >= self.bombs[r][0])) or (
                                     x >= self.bombs[r][0] and (x <= self.bombs[r][0] + 80))) and self.y + 50 > \
@@ -452,6 +493,9 @@ def drawWindow():
     for z in range(2):
         window.blit(sky, (bg_coords[z], 0))
         bg_coords[z] += 1
+
+    window.blit(tree2, (-50, 158))
+    window.blit(tree1, (830, 165))
 
     if bg_coords[0] > 0:
         bg_coords = [-xw, 0]
@@ -576,11 +620,77 @@ def drawWindow():
         window.blit(boss_headicon, [939, normal[1] * 2])
 
     draw_health()
+    draw_time()
+    all_sprites.update()
+    all_sprites.draw(window)
+
+    pygame.display.update()
+
+
+def drawTrainingWindow():
+    global animCount, enemyAnimCount, normal, bg_coords
+
+    window.blit(bgsh, (0, 0))
+
+    if animCount + 1 >= 30:
+        animCount = 0
+
+    if (non_damcircle % 4 > 1) or non_damage == False:
+        if hit:
+            if lastMove == 'left':
+                window.blit(hitLeft[hitcircle // 2], (x, y))
+            else:
+                window.blit(hitRight[hitcircle // 2], (x, y))
+        elif gunattack:
+            if lastMove == 'right':
+                window.blit(gunright[lastgunattack // 2 - 1], (x, y))
+            else:
+                window.blit(gunleft[lastgunattack // 2 - 1], (x, y))
+        elif attack:
+            if attackcircle <= 6:
+                ac = attackcircle // 3
+            else:
+                ac = 2
+            if lastMove == 'right':
+                window.blit(attackright[ac], (x, y))
+            else:
+                window.blit(attackleft[ac], (x, y))
+        elif jump:
+            if lastMove == 'right':
+                window.blit(jumpRight, (x, y))
+            else:
+                window.blit(jumpLeft, (x, y))
+        elif left:
+            window.blit(runLeft[animCount // 5], (x, y))
+            animCount += 1
+        elif right:
+            window.blit(runRight[animCount // 5], (x, y))
+            animCount += 1
+        elif lastMove == 'right':
+            window.blit(starlordright, (x, y))
+        elif lastMove == 'left':
+            window.blit(starlordleft, (x, y))
+
+    for bullet in bullets:
+        bullet.draw(window, bullet_image)
+
+    window.blit(advices[hint], (100, 80))
+    window.blit(skip_text, (870, 670))
+    if hint == 0:
+        window.blit(arl, (490, 20))
+        window.blit(arr, (580, 20))
+    if hint == 1:
+        window.blit(arup, (490, 20))
+    if hint == 2:
+        window.blit(zbut, (490, 20))
+    if hint == 3:
+        window.blit(xbut, (490, 20))
 
     pygame.display.update()
 
 
 bg = pygame.image.load('bg.png')
+bgsh = pygame.image.load('bgsh.png')
 bg_die = [
     bg,
     pygame.image.load('bg1.png'),
@@ -589,6 +699,8 @@ bg_die = [
     pygame.image.load('bg4.png'),
     pygame.image.load('bg5.png')]
 sky = pygame.image.load('sky.png')
+tree1 = pygame.image.load('tree1.png')
+tree2 = pygame.image.load('tree2.png')
 bullet_image = pygame.image.load('bullet.png')
 bgicon = pygame.image.load("bgicon.jpg")
 bodyicon = pygame.image.load("bodyicon.png")
@@ -733,18 +845,69 @@ zombie_dieLeft = [
     pygame.image.load("Zombie/Die/left5.png"),
     pygame.image.load("Zombie/Die/left6.png")
 ]
+arl = pygame.image.load("arl.png")
+arr = pygame.image.load("arr.png")
+arup = pygame.image.load("arup.png")
+xbut = pygame.image.load("x.png")
+zbut = pygame.image.load("z.png")
 boss_bgicon = pygame.image.load('bgicon2.jpg')
 boss_headicon = pygame.image.load("headicon2.png")
 boss_bodyicon = pygame.image.load("bodyicon2.png")
 boss_health = pygame.image.load("health2.png")
 
 
+def input_name(screen):
+    bg = pygame.image.load('bgt.jpg')
+    font = pygame.font.Font(None, 46)
+    clock = pygame.time.Clock()
+    input_box = pygame.Rect(445, 315, 180, 40)
+    color_inactive = (255, 160, 122)
+    color_active = (255, 99, 71)
+    color_of_text = (124, 252, 0)
+    color = color_inactive
+    active = False
+    text = ''
+
+    while True:
+        screen.blit(bg, (0, 0))
+        textrect = font.render(text, True, color_of_text)
+        t = font.render('YOUR NAME:', True, color_of_text)
+        width = max(220, textrect.get_width() + 10)
+        input_box.w = width
+        screen.blit(textrect, (input_box.x + 5, input_box.y + 5))
+        screen.blit(t, (455, 270))
+        pygame.draw.rect(screen, color, input_box, 2)
+
+        pygame.display.flip()
+        clock.tick(30)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if input_box.collidepoint(event.pos):
+                    active = not active
+                else:
+                    active = False
+                color = color_active if active else color_inactive
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    if text != '':
+                        return text
+                    else:
+                        return 'player'
+                if active:
+                    if event.key == pygame.K_BACKSPACE:
+                        text = text[:-1]
+                    else:
+                        text += event.unicode
+
+
 def start_window():
     global k1, bg_coords, pause
     white = [255, 255, 255]
     font = pygame.font.Font(None, 50)
-    text = font.render("Press space to continue", True, white)
-    pygame.mixer.music.pause()
+    text = font.render("Press space to play", True, white)
     pause0_s.play()
     time = 0
     while True:
@@ -774,7 +937,6 @@ def start_window():
         if (keys[pygame.K_SPACE] or keys[pygame.K_KP_ENTER] or pygame.mouse.get_pressed()[0] or joy.get_button(
                 6) or joy.get_button(7) or keys[pygame.K_ESCAPE]) and time > 5:
             pause1_s.play()
-            pygame.mixer.music.unpause()
             break
 
         pygame.display.update()
@@ -786,7 +948,6 @@ def pause():
     font = pygame.font.Font(None, 50)
     text = font.render("Press space to continue", True, white)
     pygame.mixer.music.pause()
-    pause0_s.play()
     time = 0
     while True:
 
@@ -813,7 +974,6 @@ def pause():
         if (keys[pygame.K_SPACE] or keys[pygame.K_KP_ENTER] or pygame.mouse.get_pressed()[0] or joy.get_button(
                 6) or joy.get_button(7) or keys[pygame.K_ESCAPE]) and time > 5:
             pause1_s.play()
-            pygame.mixer.music.unpause()
             break
 
         pygame.display.update()
@@ -855,12 +1015,54 @@ def die():
         pygame.display.update()
 
 
+def leaderboard():
+    bg = pygame.image.load('bgt.jpg')
+    with open('leaderboard.txt', 'a') as file:
+        file.write(player_name + '$' + str(round(time.clock() - start_time - pause_time)) + '\n')
+    board = [line.rstrip('\n').split('$') for line in open('leaderboard.txt', 'r').readlines()]
+    for n in range(len(board)):
+        board[n] = (int(board[n][1]), board[n][0])
+    board.sort()
+    board = board[:10]
+    color = (255, 160, 122)
+    color1 = (255, 99, 71)
+    color2 = (124, 252, 0)
+    font = pygame.font.Font(None, 50)
+    font1 = pygame.font.Font(None, 36)
+    text = font.render("LEADERBOARD", True, color2)
+    while True:
+        window.blit(bg, (0, 0))
+        window.blit(text, (350, 50))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+
+        for n in range(len(board)):
+            time1 = str(board[n][0] // 60) + ' min ' + str(board[n][0] % 60) + ' sec'
+            text1 = font1.render(board[n][1], True, color)
+            text2 = font1.render(time1, True, color1)
+            window.blit(text1, (100, n * 30 + 200))
+            window.blit(text2, (650, n * 30 + 200))
+
+        keys = pygame.key.get_pressed()
+
+        if (keys[pygame.K_SPACE] or keys[pygame.K_KP_ENTER] or pygame.mouse.get_pressed()[0] or joy.get_button(
+                6) or joy.get_button(7) or keys[pygame.K_ESCAPE]):
+            break
+
+        clock.tick(30)
+        pygame.display.update()
+
+
 while True:  # главный цикл
-    start_time = time.clock()
-    pause_time = 0
-    x = 150
-    lastx = x
-    y = yw - h - downLine
+    pygame.mixer.music.stop()
+    pygame.mixer.music.load('Sounds/music.ogg')
+    pygame.mixer.music.play(-1)
+    pygame.mixer.music.set_volume(0.4)
+    player_name = input_name(window)
+    start_window()
+    y = yw - h - downLine + 2
     lastMove = 'right'
     plasmaSpeed = 25
     enemySpeed = 2
@@ -886,15 +1088,12 @@ while True:  # главный цикл
     enemyAnimCount = 0  # Счетчик последовательности анимации бота при ходьбе
 
     guncount = 20
-    start_window()
     left = False
     right = False
     boss = False
     jumps = 0
     lastgunattack = 0
     lastpause = 0
-
-    pygame.mixer.music.play(-1)
     bullets = []  # Количество снарядов на экране
     enemies = []  # Количество ботов на экране
     rem_bul = []
@@ -902,8 +1101,165 @@ while True:  # главный цикл
     rocks_t = [Rock(230, 497, window, rocks[0], zombie_dieRight[1]),
                Rock(440, 500, window, rocks[1], zombie_dieRight[1]),
                Rock(820, 500, window, rocks[2], zombie_dieLeft[1])]
-
+    color_of_text = (124, 252, 0)
+    font = pygame.font.Font(None, 36)
+    advices = [
+        font.render('Use arrows left and right to move', True, color_of_text),
+        font.render('Use arrow up to jump', True, color_of_text),
+        font.render('Use Z to use blaster', True, color_of_text),
+        font.render('Use X to beat', True, color_of_text)
+    ]
+    pygame.mixer.music.stop()
+    pygame.mixer.music.load('Sounds/training.ogg')
     pygame.mixer.music.play(-1)
+    pygame.mixer.music.set_volume(0.2)
+    skip_text = font.render('Press SPACE to skip', True, color_of_text)
+    hint = 0
+
+    while play:  # Обучение
+
+        clock.tick(60)
+        if gunattack:
+            guncount += 1
+
+        lastpause += 1
+
+        if attack:
+            attackcircle += 1
+            if attackcircle > 12:
+                attack = False
+                attackcircle = 0
+
+        if non_damage:
+            non_damcircle += 1
+            if non_damcircle > 45:
+                non_damage = False
+                non_damcircle = 0
+
+        if gunattack:
+            lastgunattack += 1
+        if lastgunattack > 6:
+            gunattack = False
+            lastgunattack = 0
+
+        k1 += 1
+
+        xc = 0
+        yc = 0
+        pygame.time.delay(25)
+
+        keys = pygame.key.get_pressed()
+
+        if (joy.get_button(2) or keys[pygame.K_x]) and not (keys[pygame.K_LEFT]) and not (
+                keys[pygame.K_RIGHT]) and not (jump) and not (hit):
+            if hint == 3:
+                hint = 0
+            attack = True
+            if lastMove == 'left':
+                xa1 = x + 3
+                xa2 = x + 40
+            else:
+                xa1 = x + 115
+                xa2 = x + 88
+
+
+        elif (joy.get_button(3) or keys[pygame.K_z]) and not (keys[pygame.K_LEFT]) and not (
+                keys[pygame.K_RIGHT]) and not (jump) and not (hit):
+            if hint == 2:
+                hint = 3
+            gunattack = True
+            gunattack_s.play()
+            if lastMove == 'right':
+                side = 1
+            else:
+                side = -1
+            if guncount > 5:
+                bullets.append(Plasma(round(x + w // 2), round(y + h // 2), side))
+                guncount = 0
+
+        if (joy.get_hat(0) == (-1, 0) or keys[pygame.K_LEFT] or joy.get_axis(0) < -0.05) and not (attack) and not (
+                gunattack):
+            if hint == 0:
+                hint = 1
+            xc = -speed
+            left = True
+            right = False
+            lastMove = 'left'
+
+        elif (joy.get_hat(0) == (1, 0) or keys[pygame.K_RIGHT] or joy.get_axis(0) > 0.05) and not (attack) and not (
+                gunattack):
+            if hint == 0:
+                hint = 1
+            xc = speed
+            left = False
+            right = True
+            lastMove = 'right'
+
+        else:
+            left = False
+            right = False
+
+        if (joy.get_button(0) or keys[pygame.K_UP]) and not (hit) and not (attack) and not (gunattack) and (
+                        jumps == 0 or k >= 3 and jumps == 1):
+            if hint == 1:
+                hint = 2
+            k = 0
+            jumps += 1
+            jump = True
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    play = False
+
+        damm = True
+
+        for bullet in bullets:
+            if bullet.x < xw and bullet.x > 0:
+                bullet.x += bullet.speed
+            else:
+                bullets.pop(bullets.index(bullet))
+
+            for bul in rem_bul:
+                bullets.pop(bullets.index(bul))
+            rem_bul = []
+
+        if jump:
+            move = -jumpSpeed + g * k
+            k += 1
+            if move + y > yw - h - downLine + 2:
+                move = yw - h - downLine + 2 - y
+                k = 0
+                jump = False
+                jumps = 0
+            yc = move
+        x = x + xc
+        y = y + yc
+
+        if x < 0:
+            x = 0
+
+        if x > xw - w:
+            x = xw - w
+
+        if y == yw - h - downLine:
+            lastx = x
+
+        drawTrainingWindow()
+
+    play = True
+
+    start_time = time.clock()
+    pause_time = 0
+    x = 150
+    lastx = x
+    y = yw - h - downLine
+    pygame.mixer.music.stop()
+    pygame.mixer.music.load('Sounds/soundtrack.ogg')
+    pygame.mixer.music.play(-1)
+    pygame.mixer.music.set_volume(0.5)
 
     while play:  # Цикл предбоссового уровня
 
@@ -930,6 +1286,7 @@ while True:  # главный цикл
             pygame.mixer.music.stop()
             pygame.mixer.music.load('Sounds/final_boss.ogg')
             pygame.mixer.music.play(-1)
+            pygame.mixer.music.set_volume(0.2)
             boss = True
             break
 
@@ -962,10 +1319,6 @@ while True:  # главный цикл
         xc = 0
         yc = 0
         pygame.time.delay(25)
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
 
         keys = pygame.key.get_pressed()
 
@@ -1039,6 +1392,10 @@ while True:  # главный цикл
             k = 0
             jumps += 1
             jump = True
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
 
         damm = True
         for en in enemies:
@@ -1208,10 +1565,6 @@ while True:  # главный цикл
         yc = 0
         pygame.time.delay(25)
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-
         keys = pygame.key.get_pressed()
 
         if (joy.get_button(7) or keys[pygame.K_ESCAPE]) and lastpause > 5:
@@ -1295,6 +1648,10 @@ while True:  # главный цикл
             k = 0
             jumps += 1
             jump = True
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
 
         damm = True
         for en in enemies:
@@ -1416,7 +1773,12 @@ while True:  # главный цикл
         if boss_en.end:
             result = round(time.clock() - start_time - pause_time)
             result = str(result // 60) + ' min ' + str(result % 60) + ' sec'
+            pygame.mixer.music.stop()
+            pygame.mixer.music.load('Sounds/music.ogg')
+            pygame.mixer.music.play(-1)
+            pygame.mixer.music.set_volume(0.4)
             end()
+            leaderboard()
             break
 
 pygame.quit()
