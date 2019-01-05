@@ -36,7 +36,7 @@ max_enemy_health = 5
 downLine = 138
 damage_bul = 1
 damage_att = 3
-kills_to_boss = 25  ###
+kills_to_boss = 1  ###
 
 w = 128
 h = 128
@@ -81,6 +81,28 @@ enemyAnimCount = 0  # Счетчик последовательности ани
 guncount = 20
 
 all_sprites = pygame.sprite.Group()
+
+def history(pic):
+    color_of_text = (124, 252, 0)
+    window.blit(pic, (0, 0))
+    font = pygame.font.Font(None, 36)
+    skip_text = font.render('Press SPACE to skip', True, color_of_text)
+    window.blit(skip_text, (870, 670))
+    show = True
+    while show:
+        keys = pygame.key.get_pressed()
+        clock.tick(30)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    show = False
+            if keys[pygame.K_KP_ENTER] or pygame.mouse.get_pressed()[0] or joy.get_button(
+                    6) or joy.get_button(7) or keys[pygame.K_ESCAPE]:
+                show = False
+        pygame.display.update()
+
 
 
 def end():
@@ -728,6 +750,9 @@ zombie_attack.set_volume(0.1)
 zombie_hit = pygame.mixer.Sound('Sounds/zombie_hit.wav')
 zombie_hit.set_volume(0.1)
 ground = pygame.image.load("ground.png")
+hist1 = pygame.image.load("hist1.png")
+hist2 = pygame.image.load("hist2.png")
+hist3 = pygame.image.load("hist3.png")
 rocks = [
     pygame.image.load("rock1.png"),
     pygame.image.load("rock2.png"),
@@ -1062,6 +1087,7 @@ while True:  # главный цикл
     pygame.mixer.music.set_volume(0.4)
     player_name = input_name(window)
     start_window()
+    history(hist1)
     y = yw - h - downLine + 2
     lastMove = 'right'
     plasmaSpeed = 25
@@ -1248,6 +1274,8 @@ while True:  # главный цикл
             lastx = x
 
         drawTrainingWindow()
+
+    history(hist2)
 
     play = True
 
@@ -1483,6 +1511,8 @@ while True:  # главный цикл
             lastx = x
 
         drawWindow()
+
+    history(hist3)
 
     fires = []
     k2 = 0
