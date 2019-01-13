@@ -24,7 +24,7 @@ else:
     joy = Joy()
 
 pygame.mixer.init()
-window = pygame.display.set_mode((xw, yw))
+window = pygame.display.set_mode((xw, yw), pygame.FULLSCREEN)
 
 pygame.display.set_caption("Guardians of the Galaxy - Starlord Adventures")
 
@@ -43,12 +43,12 @@ h = 128
 x = 150
 lastx = x
 y = yw - h - downLine
-speed = 10
-g = 4
-jumpSpeed = 25
+speed = 8
+g = 3
+jumpSpeed = 20
 lastMove = 'right'
 plasmaSpeed = 25
-enemySpeed = 2
+enemySpeed = 1
 fenatt = 5  ## Отталкивание персонажа ударом бота
 fhatt = 7  ## Отталкивание бота ударом персонажа
 kills = 0
@@ -82,6 +82,7 @@ guncount = 20
 
 all_sprites = pygame.sprite.Group()
 
+
 def history(pic):
     color_of_text = (124, 252, 0)
     window.blit(pic, (0, 0))
@@ -102,7 +103,6 @@ def history(pic):
                     6) or joy.get_button(7) or keys[pygame.K_ESCAPE]:
                 show = False
         pygame.display.update()
-
 
 
 def end():
@@ -331,7 +331,6 @@ class Boss(Enemy):
     bb = []
     dam = False
     go = True
-    get_dam = False
     die = False
     end = False
     bomb_s = pygame.mixer.Sound('Sounds/bomb.wav')
@@ -345,7 +344,7 @@ class Boss(Enemy):
         if self.health <= 0:
             self.die = True
         if self.go:
-            self.x -= 8
+            self.x -= 6
             if self.x <= 850:
                 self.go = False
                 self.attack = True
@@ -364,11 +363,10 @@ class Boss(Enemy):
                 self.bombs[r][1] += 15
             self.ga += 1
             if self.ga % 20 == 0:
-                self.bombs.append([self.ga * 10 - 276, 80])
-            if self.ga > 170:
+                self.bombs.append([self.ga * 7 - 276, 80])
+            if self.ga > 230:
                 self.attack = False
                 self.crouch = True
-                self.get_dam = True
                 self.ga = 0
         if self.die:
             self.x += 8
@@ -460,7 +458,7 @@ class Boss(Enemy):
         for x in self.bombs:
             window.blit(self.bomb, (x[0], x[1]))
         if self.attack:
-            window.blit(self.plane, (self.ga * 10 - 636, -20))
+            window.blit(self.plane, (self.ga * 7 - 636, -20))
 
     def hit(self):
         if self.health <= 0:
@@ -576,9 +574,9 @@ def drawWindow():
                 window.blit(hitRight[hitcircle // 2], (x, y))
         elif gunattack:
             if lastMove == 'right':
-                window.blit(gunright[lastgunattack // 2 - 1], (x, y))
+                window.blit(gunright[lastgunattack // 4 - 1], (x, y))
             else:
-                window.blit(gunleft[lastgunattack // 2 - 1], (x, y))
+                window.blit(gunleft[lastgunattack // 4 - 1], (x, y))
         elif attack:
             if attackcircle <= 6:
                 ac = attackcircle // 3
@@ -665,9 +663,9 @@ def drawTrainingWindow():
                 window.blit(hitRight[hitcircle // 2], (x, y))
         elif gunattack:
             if lastMove == 'right':
-                window.blit(gunright[lastgunattack // 2 - 1], (x, y))
+                window.blit(gunright[lastgunattack // 4 - 1], (x, y))
             else:
-                window.blit(gunleft[lastgunattack // 2 - 1], (x, y))
+                window.blit(gunleft[lastgunattack // 4 - 1], (x, y))
         elif attack:
             if attackcircle <= 6:
                 ac = attackcircle // 3
@@ -711,20 +709,20 @@ def drawTrainingWindow():
     pygame.display.update()
 
 
-bg = pygame.image.load('bg.png')
-bgsh = pygame.image.load('bgsh.png')
+bg = pygame.image.load('bg.png').convert()
+bgsh = pygame.image.load('bgsh.png').convert()
 bg_die = [
     bg,
-    pygame.image.load('bg1.png'),
-    pygame.image.load('bg2.png'),
-    pygame.image.load('bg3.png'),
-    pygame.image.load('bg4.png'),
-    pygame.image.load('bg5.png')]
-sky = pygame.image.load('sky.png')
+    pygame.image.load('bg1.png').convert(),
+    pygame.image.load('bg2.png').convert(),
+    pygame.image.load('bg3.png').convert(),
+    pygame.image.load('bg4.png').convert(),
+    pygame.image.load('bg5.png').convert()]
+sky = pygame.image.load('sky.png').convert()
 tree1 = pygame.image.load('tree1.png')
 tree2 = pygame.image.load('tree2.png')
 bullet_image = pygame.image.load('bullet.png')
-bgicon = pygame.image.load("bgicon.jpg")
+bgicon = pygame.image.load("bgicon.jpg").convert()
 bodyicon = pygame.image.load("bodyicon.png")
 headicon = pygame.image.load("headicon.png")
 boss_head = pygame.image.load("Boss/PNG/head.png")
@@ -999,6 +997,7 @@ def pause():
         if (keys[pygame.K_SPACE] or keys[pygame.K_KP_ENTER] or pygame.mouse.get_pressed()[0] or joy.get_button(
                 6) or joy.get_button(7) or keys[pygame.K_ESCAPE]) and time > 5:
             pause1_s.play()
+            pygame.mixer.music.unpause()
             break
 
         pygame.display.update()
@@ -1144,7 +1143,7 @@ while True:  # главный цикл
 
     while play:  # Обучение
 
-        clock.tick(60)
+        clock.tick(30)
         if gunattack:
             guncount += 1
 
@@ -1164,7 +1163,7 @@ while True:  # главный цикл
 
         if gunattack:
             lastgunattack += 1
-        if lastgunattack > 6:
+        if lastgunattack > 12:
             gunattack = False
             lastgunattack = 0
 
@@ -1191,15 +1190,15 @@ while True:  # главный цикл
 
         elif (joy.get_button(3) or keys[pygame.K_z]) and not (keys[pygame.K_LEFT]) and not (
                 keys[pygame.K_RIGHT]) and not (jump) and not (hit):
-            if hint == 2:
-                hint = 3
-            gunattack = True
-            gunattack_s.play()
-            if lastMove == 'right':
-                side = 1
-            else:
-                side = -1
-            if guncount > 5:
+            if guncount > 12 and not gunattack:
+                if hint == 2:
+                    hint = 3
+                if lastMove == 'right':
+                    side = 1
+                else:
+                    side = -1
+                gunattack = True
+                gunattack_s.play()
                 bullets.append(Plasma(round(x + w // 2), round(y + h // 2), side))
                 guncount = 0
 
@@ -1291,7 +1290,7 @@ while True:  # главный цикл
 
     while play:  # Цикл предбоссового уровня
 
-        clock.tick(60)
+        clock.tick(30)
 
         if gunattack:
             guncount += 1
@@ -1320,10 +1319,10 @@ while True:  # главный цикл
 
         if hit:
             hitcircle += 1
+            non_damage = True
             if hitcircle > 2:
                 hit = False
                 hitcircle = 0
-                non_damage = True
 
         if non_damage:
             non_damcircle += 1
@@ -1333,7 +1332,7 @@ while True:  # главный цикл
 
         if gunattack:
             lastgunattack += 1
-        if lastgunattack > 6:
+        if lastgunattack > 12:
             gunattack = False
             lastgunattack = 0
 
@@ -1387,13 +1386,15 @@ while True:  # главный цикл
 
         elif (joy.get_button(3) or keys[pygame.K_z]) and not (keys[pygame.K_LEFT]) and not (
                 keys[pygame.K_RIGHT]) and not (jump) and not (hit):
-            gunattack = True
-            gunattack_s.play()
-            if lastMove == 'right':
-                side = 1
-            else:
-                side = -1
-            if guncount > 5:
+            if guncount > 12 and not gunattack:
+                if hint == 2:
+                    hint = 3
+                if lastMove == 'right':
+                    side = 1
+                else:
+                    side = -1
+                gunattack = True
+                gunattack_s.play()
                 bullets.append(Plasma(round(x + w // 2), round(y + h // 2), side))
                 guncount = 0
 
@@ -1522,7 +1523,7 @@ while True:  # главный цикл
     for rock in rocks_t:
         rock.chance = (250, 275, 225, 150)
     while play:  # Битва с боссом
-        clock.tick(60)
+        clock.tick(30)
 
         if gunattack:
             guncount += 1
@@ -1569,10 +1570,10 @@ while True:  # главный цикл
 
         if hit:
             hitcircle += 1
+            non_damage = True
             if hitcircle > 2:
                 hit = False
                 hitcircle = 0
-                non_damage = True
 
         if non_damage:
             non_damcircle += 1
@@ -1582,7 +1583,7 @@ while True:  # главный цикл
 
         if gunattack:
             lastgunattack += 1
-        if lastgunattack > 6:
+        if lastgunattack > 12:
             gunattack = False
             lastgunattack = 0
 
@@ -1619,8 +1620,9 @@ while True:  # главный цикл
             if (xa1 > (boss_en.x + 40)) and (xa1 < (boss_en.x + 88)) or (xa2 > (boss_en.x + 40)) and (
                         xa2 < (boss_en.x + 88)):
                 attack_s.play()
-                boss_en.hit()
-                boss_en.health -= 2
+                if boss_en.crouch:
+                    boss_en.hit()
+                    boss_en.health -= 2
             else:
                 for en in enemies:
                     if (xa1 > (en.x + 13)) and (xa1 < (en.x + 66)) or (xa2 > (en.x + 13)) and (xa2 < (en.x + 66)):
@@ -1643,13 +1645,15 @@ while True:  # главный цикл
         elif (joy.get_button(3) or keys[pygame.K_z]) and not (keys[pygame.K_LEFT]) and not (
                 keys[pygame.K_RIGHT]) and not (
                 jump) and not (hit):
-            gunattack = True
-            gunattack_s.play()
-            if lastMove == 'right':
-                side = 1
-            else:
-                side = -1
-            if guncount > 5:
+            if guncount > 12 and not gunattack:
+                if hint == 2:
+                    hint = 3
+                if lastMove == 'right':
+                    side = 1
+                else:
+                    side = -1
+                gunattack = True
+                gunattack_s.play()
                 bullets.append(Plasma(round(x + w // 2), round(y + h // 2), side))
                 guncount = 0
 
@@ -1751,9 +1755,9 @@ while True:  # главный цикл
         for bullet in bullets:
             if (bullet.x > (boss_en.x + 40)) and (bullet.x < (boss_en.x + 88)):
                 rem_bul.append(bullet)
-                if boss_en.get_dam:
+                if boss_en.crouch:
                     boss_en.health -= 1
-                boss_en.get_dam = False
+                boss_en.crouch = False
                 boss_en.hit()
             else:
                 for en in enemies:
