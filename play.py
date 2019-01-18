@@ -1,6 +1,7 @@
 import pygame
 import random
 import time
+import os
 
 xw = 1131
 yw = 707
@@ -48,7 +49,7 @@ g = 3
 jumpSpeed = 20
 lastMove = 'right'
 plasmaSpeed = 25
-enemySpeed = 1
+enemySpeed = 2
 fenatt = 5  ## Отталкивание персонажа ударом бота
 fhatt = 7  ## Отталкивание бота ударом персонажа
 kills = 0
@@ -65,13 +66,6 @@ circlekills = 0
 k = 0
 k1 = 0
 
-start_s = pygame.mixer.Sound('Sounds/start.wav')
-start_s.set_volume(0.1)
-pause1_s = pygame.mixer.Sound('Sounds/pause1.wav')
-pause1_s.set_volume(0.1)
-bg_menu = pygame.image.load('bgmenu.png')
-logo = pygame.image.load("logo.png")
-
 clock = pygame.time.Clock()
 
 animCount = 0  # Счетчик последовательности анимации персонажа при ходьбе
@@ -79,8 +73,23 @@ animCount = 0  # Счетчик последовательности анима�
 enemyAnimCount = 0  # Счетчик последовательности анимации бота при ходьбе
 
 guncount = 20
-
 all_sprites = pygame.sprite.Group()
+cursor_sprites = pygame.sprite.Group()
+
+
+def load_image(name, colorkey=None):
+    fullname = os.path.join('data', name)
+    try:
+        image = pygame.image.load(fullname)
+        image = image.convert_alpha()
+        if colorkey is not None:
+            if colorkey is -1:
+                colorkey = image.get_at((0, 0))
+            image.set_colorkey(colorkey)
+        return image
+    except pygame.error as message:
+        print('Cannot load image:', name)
+        raise SystemExit(message)
 
 
 def history(pic):
@@ -102,48 +111,6 @@ def history(pic):
             if keys[pygame.K_KP_ENTER] or pygame.mouse.get_pressed()[0] or joy.get_button(
                     6) or joy.get_button(7) or keys[pygame.K_ESCAPE]:
                 show = False
-        pygame.display.update()
-
-
-def end():
-    win_sound.play()
-    congratulation.play()
-    k1 = 0
-    white = [255, 255, 255]
-    font = pygame.font.Font(None, 60)
-    font2 = pygame.font.Font(None, 100)
-    text1 = font.render("{}, congratulations!".format(player_name), True, white)
-    text2 = font.render("You defeated the boss and won the game!", True, white)
-    text3 = font.render("Your time:", True, white)
-    text4 = font2.render(result, True, white)
-    bg_coords = [0, xw]
-    while True:
-
-        clock.tick(30)
-        k1 += 1
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-
-        for x in range(2):
-            window.blit(bg_menu, (bg_coords[x], 0))
-            bg_coords[x] -= 3
-
-        if bg_coords[0] < -xw:
-            bg_coords = [0, xw]
-
-        window.blit(text1, [350, 130])
-        window.blit(text2, [170, 200])
-        window.blit(text3, [170, 300])
-        window.blit(text4, [400, 285])
-
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_SPACE] or keys[pygame.K_KP_ENTER] or pygame.mouse.get_pressed()[0] or joy.get_button(
-                6) or joy.get_button(7):
-            pause1_s.play()
-            break
-
         pygame.display.update()
 
 
@@ -171,9 +138,10 @@ def draw_time():
 
 
 class Particle(pygame.sprite.Sprite):
-    fire = [pygame.image.load('b.png')]
+    fire = [load_image('b1.png'), load_image('b2.png', -1)]
     for scale in (9, 12, 22):
         fire.append(pygame.transform.scale(fire[0], (scale, scale)))
+        fire.append(pygame.transform.scale(fire[1], (scale, scale)))
 
     def __init__(self, pos, dx, dy):
         super().__init__(all_sprites)
@@ -191,6 +159,17 @@ class Particle(pygame.sprite.Sprite):
         self.rect.y += self.velocity[1]
         if not self.rect.colliderect(self.screen_rect):
             self.kill()
+
+
+class Arrow(pygame.sprite.Sprite):
+    def __init__(self, group):
+        super().__init__(group)
+        self.image = cursor
+        self.rect = self.image.get_rect()
+
+    def update(self, x, y):
+        self.rect.x = x
+        self.rect.y = y
 
 
 def create_particles(position):
@@ -215,17 +194,20 @@ class Enemy:
         self.attackcircle = 0
         self.diecircle = 0
         self.last_attack = 0
+        self.k = 0
 
     def move(self, x):
         if not (self.attack):
-            if x < self.x:
-                self.x -= self.speed
-                self.left = True
-                self.right = False
-            elif x > self.x:
-                self.x += self.speed
-                self.left = False
-                self.right = True
+            self.k += 1
+            if self.k % 3 != 0:
+                if x < self.x:
+                    self.x -= self.speed
+                    self.left = True
+                    self.right = False
+                elif x > self.x:
+                    self.x += self.speed
+                    self.left = False
+                    self.right = True
 
     def draw(self, window, image):
         window.blit(image, (self.x, self.y))
@@ -254,8 +236,8 @@ class Fire:
         self.window = window
         self.x = x
         self.y = y
-        self.sp1 = pygame.image.load('fire1.png')
-        self.sp2 = pygame.image.load('fire2.png')
+        self.sp1 = load_image('fire1.png')
+        self.sp2 = load_image('fire2.png')
 
     def draw(self, k):
         if k % 8 < 4:
@@ -266,53 +248,53 @@ class Fire:
 
 class Boss(Enemy):
     crl = [
-        pygame.image.load('boss/PNG/crl1.png'),
-        pygame.image.load('boss/PNG/crl2.png'),
-        pygame.image.load('boss/PNG/crl3.png'),
-        pygame.image.load('boss/PNG/crl4.png')
+        load_image('boss/PNG/crl1.png'),
+        load_image('boss/PNG/crl2.png'),
+        load_image('boss/PNG/crl3.png'),
+        load_image('boss/PNG/crl4.png')
     ]
     crr = [
-        pygame.image.load('boss/PNG/crr1.png'),
-        pygame.image.load('boss/PNG/crr2.png'),
-        pygame.image.load('boss/PNG/crr3.png'),
-        pygame.image.load('boss/PNG/crr4.png')
+        load_image('boss/PNG/crr1.png'),
+        load_image('boss/PNG/crr2.png'),
+        load_image('boss/PNG/crr3.png'),
+        load_image('boss/PNG/crr4.png')
     ]
     runl = [
-        pygame.image.load('boss/PNG/runl1.png'),
-        pygame.image.load('boss/PNG/runl2.png'),
-        pygame.image.load('boss/PNG/runl3.png'),
-        pygame.image.load('boss/PNG/runl4.png'),
-        pygame.image.load('boss/PNG/runl5.png'),
-        pygame.image.load('boss/PNG/runl6.png')
+        load_image('boss/PNG/runl1.png'),
+        load_image('boss/PNG/runl2.png'),
+        load_image('boss/PNG/runl3.png'),
+        load_image('boss/PNG/runl4.png'),
+        load_image('boss/PNG/runl5.png'),
+        load_image('boss/PNG/runl6.png')
     ]
     runr = [
-        pygame.image.load('boss/PNG/runr1.png'),
-        pygame.image.load('boss/PNG/runr2.png'),
-        pygame.image.load('boss/PNG/runr3.png'),
-        pygame.image.load('boss/PNG/runr4.png'),
-        pygame.image.load('boss/PNG/runr5.png'),
-        pygame.image.load('boss/PNG/runr6.png')
+        load_image('boss/PNG/runr1.png'),
+        load_image('boss/PNG/runr2.png'),
+        load_image('boss/PNG/runr3.png'),
+        load_image('boss/PNG/runr4.png'),
+        load_image('boss/PNG/runr5.png'),
+        load_image('boss/PNG/runr6.png')
     ]
     boom = [
-        pygame.image.load('boom/1.png'),
-        pygame.image.load('boom/2.png'),
-        pygame.image.load('boom/3.png'),
-        pygame.image.load('boom/4.png'),
-        pygame.image.load('boom/5.png'),
-        pygame.image.load('boom/6.png')
+        load_image('boom/1.png'),
+        load_image('boom/2.png'),
+        load_image('boom/3.png'),
+        load_image('boom/4.png'),
+        load_image('boom/5.png'),
+        load_image('boom/6.png')
     ]
     hitl = [
-        pygame.image.load('boss/PNG/hitl1.png'),
-        pygame.image.load('boss/PNG/hitl2.png')
+        load_image('boss/PNG/hitl1.png'),
+        load_image('boss/PNG/hitl2.png')
     ]
     hitr = [
-        pygame.image.load('boss/PNG/hitr1.png'),
-        pygame.image.load('boss/PNG/hitr2.png')
+        load_image('boss/PNG/hitr1.png'),
+        load_image('boss/PNG/hitr2.png')
     ]
-    stayl = pygame.image.load('boss/PNG/stayl.png')
-    stayr = pygame.image.load('boss/PNG/stayr.png')
-    plane = pygame.image.load('plane.png')
-    bomb = pygame.image.load('bomb.png')
+    stayl = load_image('boss/PNG/stayl.png')
+    stayr = load_image('boss/PNG/stayr.png')
+    plane = load_image('plane.png')
+    bomb = load_image('bomb.png')
     animCount = 0
     crCount = 0
     pic = 3
@@ -333,11 +315,13 @@ class Boss(Enemy):
     go = True
     die = False
     end = False
-    bomb_s = pygame.mixer.Sound('Sounds/bomb.wav')
+    get_dambool = False
+
+    bomb_s = pygame.mixer.Sound('data/Sounds/bomb.wav')
     bomb_s.set_volume(0.1)
-    boss_attack = pygame.mixer.Sound('Sounds/boss_attack.wav')
+    boss_attack = pygame.mixer.Sound('data/Sounds/boss_attack.wav')
     boss_attack.set_volume(0.1)
-    boss_hit = pygame.mixer.Sound('Sounds/boss_hit.wav')
+    boss_hit = pygame.mixer.Sound('data/Sounds/boss_hit.wav')
     boss_hit.set_volume(0.1)
 
     def move(self, x):
@@ -362,11 +346,12 @@ class Boss(Enemy):
                 self.bombs[r][0] += 2
                 self.bombs[r][1] += 15
             self.ga += 1
-            if self.ga % 20 == 0:
-                self.bombs.append([self.ga * 7 - 276, 80])
-            if self.ga > 230:
+            if self.ga % 50 == 0:
+                self.bombs.append([self.ga * 4 - 276, 80])
+            if self.ga > 460:
                 self.attack = False
                 self.crouch = True
+                self.get_dambool = True
                 self.ga = 0
         if self.die:
             self.x += 8
@@ -375,10 +360,12 @@ class Boss(Enemy):
         elif self.crouch:
             self.time_cr += 1
             if self.time_cr >= 150 and not (self.hurt):
+                self.get_dambool = False
                 self.crouch = False
                 self.time_cr = 0
-                self.change_pos = True
-        if self.change_pos:
+                if not self.die:
+                    self.change_pos = True
+        if self.change_pos and not self.die:
             if self.pos == 'right':
                 self.x -= self.speed
                 if self.x <= 180:
@@ -413,6 +400,12 @@ class Boss(Enemy):
                     break
         for r in bombs_del:
             del self.bombs[r]
+
+    def get_dam(self, n):
+        if self.crouch and self.get_dambool:
+            self.get_dambool = False
+            self.health -= n
+            self.time_cr = 115
 
     def draw(self, window, image):
         if self.hurt:
@@ -458,7 +451,7 @@ class Boss(Enemy):
         for x in self.bombs:
             window.blit(self.bomb, (x[0], x[1]))
         if self.attack:
-            window.blit(self.plane, (self.ga * 7 - 636, -20))
+            window.blit(self.plane, (self.ga * 4 - 636, -20))
 
     def hit(self):
         if self.health <= 0:
@@ -643,6 +636,7 @@ def drawWindow():
     draw_time()
     all_sprites.update()
     all_sprites.draw(window)
+    cursor_sprites.draw(window)
 
     pygame.display.update()
 
@@ -706,181 +700,190 @@ def drawTrainingWindow():
     if hint == 3:
         window.blit(xbut, (490, 20))
 
+    cursor_sprites.draw(window)
+
     pygame.display.update()
 
-
-bg = pygame.image.load('bg.png').convert()
-bgsh = pygame.image.load('bgsh.png').convert()
+start_s = pygame.mixer.Sound('data/Sounds/start.wav')
+start_s.set_volume(0.1)
+pause1_s = pygame.mixer.Sound('data/Sounds/pause1.wav')
+pause1_s.set_volume(0.1)
+cursor = load_image('cursor.png')
+Arrow(cursor_sprites)
+bg_menu = load_image('bgmenu.png')
+logo = load_image("logo.png")
+bg = load_image('bg.png')
+bgsh = load_image('bgsh.png')
 bg_die = [
     bg,
-    pygame.image.load('bg1.png').convert(),
-    pygame.image.load('bg2.png').convert(),
-    pygame.image.load('bg3.png').convert(),
-    pygame.image.load('bg4.png').convert(),
-    pygame.image.load('bg5.png').convert()]
-sky = pygame.image.load('sky.png').convert()
-tree1 = pygame.image.load('tree1.png')
-tree2 = pygame.image.load('tree2.png')
-bullet_image = pygame.image.load('bullet.png')
-bgicon = pygame.image.load("bgicon.jpg").convert()
-bodyicon = pygame.image.load("bodyicon.png")
-headicon = pygame.image.load("headicon.png")
-boss_head = pygame.image.load("Boss/PNG/head.png")
-health = pygame.image.load("health.png")
-diehealth = pygame.image.load("diehealth.png")
-pygame.mixer.music.load('Sounds/soundtrack.ogg')
-attack_s = pygame.mixer.Sound('Sounds/attack.wav')
+    load_image('bg1.png'),
+    load_image('bg2.png'),
+    load_image('bg3.png'),
+    load_image('bg4.png'),
+    load_image('bg5.png')]
+sky = load_image('sky.png')
+tree1 = load_image('tree1.png')
+tree2 = load_image('tree2.png')
+bullet_image = load_image('bullet.png')
+bgicon = load_image("bgicon.jpg")
+bodyicon = load_image("bodyicon.png")
+headicon = load_image("headicon.png")
+boss_head = load_image("Boss/PNG/head.png")
+health = load_image("health.png")
+diehealth = load_image("diehealth.png")
+pygame.mixer.music.load('data/Sounds/soundtrack.ogg')
+attack_s = pygame.mixer.Sound('data/Sounds/attack.wav')
 attack_s.set_volume(0.1)
-gunattack_s = pygame.mixer.Sound('Sounds/gunattack.wav')
+gunattack_s = pygame.mixer.Sound('data/Sounds/gunattack.wav')
 gunattack_s.set_volume(0.06)
-pause0_s = pygame.mixer.Sound('Sounds/pause0.wav')
+pause0_s = pygame.mixer.Sound('data/Sounds/pause0.wav')
 pause0_s.set_volume(0.1)
-hill_s = pygame.mixer.Sound('Sounds/hill.wav')
+hill_s = pygame.mixer.Sound('data/Sounds/hill.wav')
 hill_s.set_volume(0.3)
-hit_s = pygame.mixer.Sound('Sounds/hit.wav')
+hit_s = pygame.mixer.Sound('data/Sounds/hit.wav')
 hit_s.set_volume(0.1)
-win_sound = pygame.mixer.Sound('Sounds/win.wav')
+win_sound = pygame.mixer.Sound('data/Sounds/win.wav')
 win_sound.set_volume(0.1)
-congratulation = pygame.mixer.Sound('Sounds/congratulation.wav')
+congratulation = pygame.mixer.Sound('data/Sounds/congratulation.wav')
 congratulation.set_volume(0.1)
-zombie_attack = pygame.mixer.Sound('Sounds/zombie_attack.wav')
+zombie_attack = pygame.mixer.Sound('data/Sounds/zombie_attack.wav')
 zombie_attack.set_volume(0.1)
-zombie_hit = pygame.mixer.Sound('Sounds/zombie_hit.wav')
+zombie_hit = pygame.mixer.Sound('data/Sounds/zombie_hit.wav')
 zombie_hit.set_volume(0.1)
-ground = pygame.image.load("ground.png")
-hist1 = pygame.image.load("hist1.png")
-hist2 = pygame.image.load("hist2.png")
-hist3 = pygame.image.load("hist3.png")
+ground = load_image("ground.png")
+hist1 = load_image("hist1.png")
+hist2 = load_image("hist2.png")
+hist3 = load_image("hist3.png")
 rocks = [
-    pygame.image.load("rock1.png"),
-    pygame.image.load("rock2.png"),
-    pygame.image.load("rock3.png")
+    load_image("rock1.png"),
+    load_image("rock2.png"),
+    load_image("rock3.png")
 ]
 runLeft = [
-    pygame.image.load("Star Lord/PNG/runleft1.png"),
-    pygame.image.load("Star Lord/PNG/runleft2.png"),
-    pygame.image.load("Star Lord/PNG/runleft3.png"),
-    pygame.image.load("Star Lord/PNG/runleft4.png"),
-    pygame.image.load("Star Lord/PNG/runleft5.png"),
-    pygame.image.load("Star Lord/PNG/runleft6.png")
+    load_image("Star Lord/PNG/runleft1.png"),
+    load_image("Star Lord/PNG/runleft2.png"),
+    load_image("Star Lord/PNG/runleft3.png"),
+    load_image("Star Lord/PNG/runleft4.png"),
+    load_image("Star Lord/PNG/runleft5.png"),
+    load_image("Star Lord/PNG/runleft6.png")
 ]
 runRight = [
-    pygame.image.load("Star Lord/PNG/runright1.png"),
-    pygame.image.load("Star Lord/PNG/runright2.png"),
-    pygame.image.load("Star Lord/PNG/runright3.png"),
-    pygame.image.load("Star Lord/PNG/runright4.png"),
-    pygame.image.load("Star Lord/PNG/runright5.png"),
-    pygame.image.load("Star Lord/PNG/runright6.png")
+    load_image("Star Lord/PNG/runright1.png"),
+    load_image("Star Lord/PNG/runright2.png"),
+    load_image("Star Lord/PNG/runright3.png"),
+    load_image("Star Lord/PNG/runright4.png"),
+    load_image("Star Lord/PNG/runright5.png"),
+    load_image("Star Lord/PNG/runright6.png")
 ]
 hitLeft = [
-    pygame.image.load("Star Lord/PNG/hitleft1.png"),
-    pygame.image.load("Star Lord/PNG/hitleft2.png")
+    load_image("Star Lord/PNG/hitleft1.png"),
+    load_image("Star Lord/PNG/hitleft2.png")
 ]
 hitRight = [
-    pygame.image.load("Star Lord/PNG/hitright1.png"),
-    pygame.image.load("Star Lord/PNG/hitright2.png")
+    load_image("Star Lord/PNG/hitright1.png"),
+    load_image("Star Lord/PNG/hitright2.png")
 ]
-staying = pygame.image.load("Star Lord/PNG/frontal.png")
-starlordleft = pygame.image.load("Star Lord/PNG/starlordleft.png")
-starlordright = pygame.image.load("Star Lord/PNG/starlordright.png")
-jumpLeft = pygame.image.load("Star Lord/PNG/jumpleft.png")
-jumpRight = pygame.image.load("Star Lord/PNG/jumpright.png")
+staying = load_image("Star Lord/PNG/frontal.png")
+starlordleft = load_image("Star Lord/PNG/starlordleft.png")
+starlordright = load_image("Star Lord/PNG/starlordright.png")
+jumpLeft = load_image("Star Lord/PNG/jumpleft.png")
+jumpRight = load_image("Star Lord/PNG/jumpright.png")
 gunleft = [
-    pygame.image.load("Star Lord/PNG/gunleft1.png"),
-    pygame.image.load("Star Lord/PNG/gunleft2.png"),
-    pygame.image.load("Star Lord/PNG/gunleft3.png")
+    load_image("Star Lord/PNG/gunleft1.png"),
+    load_image("Star Lord/PNG/gunleft2.png"),
+    load_image("Star Lord/PNG/gunleft3.png")
 ]
 gunright = [
-    pygame.image.load("Star Lord/PNG/gunright1.png"),
-    pygame.image.load("Star Lord/PNG/gunright2.png"),
-    pygame.image.load("Star Lord/PNG/gunright3.png")
+    load_image("Star Lord/PNG/gunright1.png"),
+    load_image("Star Lord/PNG/gunright2.png"),
+    load_image("Star Lord/PNG/gunright3.png")
 ]
 attackleft = [
-    pygame.image.load("Star Lord/PNG/lattack1.png"),
-    pygame.image.load("Star Lord/PNG/lattack2.png"),
-    pygame.image.load("Star Lord/PNG/lattack3.png")
+    load_image("Star Lord/PNG/lattack1.png"),
+    load_image("Star Lord/PNG/lattack2.png"),
+    load_image("Star Lord/PNG/lattack3.png")
 ]
 attackright = [
-    pygame.image.load("Star Lord/PNG/rattack1.png"),
-    pygame.image.load("Star Lord/PNG/rattack2.png"),
-    pygame.image.load("Star Lord/PNG/rattack3.png")
+    load_image("Star Lord/PNG/rattack1.png"),
+    load_image("Star Lord/PNG/rattack2.png"),
+    load_image("Star Lord/PNG/rattack3.png")
 ]
 zombieLeft = [
-    pygame.image.load("Zombie/Walk/left1.png"),
-    pygame.image.load("Zombie/Walk/left2.png"),
-    pygame.image.load("Zombie/Walk/left3.png"),
-    pygame.image.load("Zombie/Walk/left4.png"),
-    pygame.image.load("Zombie/Walk/left5.png"),
-    pygame.image.load("Zombie/Walk/left6.png")
+    load_image("Zombie/Walk/left1.png"),
+    load_image("Zombie/Walk/left2.png"),
+    load_image("Zombie/Walk/left3.png"),
+    load_image("Zombie/Walk/left4.png"),
+    load_image("Zombie/Walk/left5.png"),
+    load_image("Zombie/Walk/left6.png")
 ]
 zombieRight = [
-    pygame.image.load("Zombie/Walk/right1.png"),
-    pygame.image.load("Zombie/Walk/right2.png"),
-    pygame.image.load("Zombie/Walk/right3.png"),
-    pygame.image.load("Zombie/Walk/right4.png"),
-    pygame.image.load("Zombie/Walk/right5.png"),
-    pygame.image.load("Zombie/Walk/right6.png")
+    load_image("Zombie/Walk/right1.png"),
+    load_image("Zombie/Walk/right2.png"),
+    load_image("Zombie/Walk/right3.png"),
+    load_image("Zombie/Walk/right4.png"),
+    load_image("Zombie/Walk/right5.png"),
+    load_image("Zombie/Walk/right6.png")
 ]
 zombie_hurtRight = [
-    pygame.image.load("Zombie/Hurt/right1.png"),
-    pygame.image.load("Zombie/Hurt/right2.png"),
-    pygame.image.load("Zombie/Hurt/right3.png"),
-    pygame.image.load("Zombie/Hurt/right4.png"),
-    pygame.image.load("Zombie/Hurt/right5.png"),
-    pygame.image.load("Zombie/Hurt/right6.png")
+    load_image("Zombie/Hurt/right1.png"),
+    load_image("Zombie/Hurt/right2.png"),
+    load_image("Zombie/Hurt/right3.png"),
+    load_image("Zombie/Hurt/right4.png"),
+    load_image("Zombie/Hurt/right5.png"),
+    load_image("Zombie/Hurt/right6.png")
 ]
 zombie_hurtLeft = [
-    pygame.image.load("Zombie/Hurt/left1.png"),
-    pygame.image.load("Zombie/Hurt/left2.png"),
-    pygame.image.load("Zombie/Hurt/left3.png"),
-    pygame.image.load("Zombie/Hurt/left4.png"),
-    pygame.image.load("Zombie/Hurt/left5.png"),
-    pygame.image.load("Zombie/Hurt/left6.png")
+    load_image("Zombie/Hurt/left1.png"),
+    load_image("Zombie/Hurt/left2.png"),
+    load_image("Zombie/Hurt/left3.png"),
+    load_image("Zombie/Hurt/left4.png"),
+    load_image("Zombie/Hurt/left5.png"),
+    load_image("Zombie/Hurt/left6.png")
 ]
 zombie_attackRight = [
-    pygame.image.load("Zombie/Attack/right1.png"),
-    pygame.image.load("Zombie/Attack/right2.png"),
-    pygame.image.load("Zombie/Attack/right3.png"),
-    pygame.image.load("Zombie/Attack/right4.png"),
-    pygame.image.load("Zombie/Attack/right5.png"),
-    pygame.image.load("Zombie/Attack/right6.png")]
+    load_image("Zombie/Attack/right1.png"),
+    load_image("Zombie/Attack/right2.png"),
+    load_image("Zombie/Attack/right3.png"),
+    load_image("Zombie/Attack/right4.png"),
+    load_image("Zombie/Attack/right5.png"),
+    load_image("Zombie/Attack/right6.png")]
 zombie_attackLeft = [
-    pygame.image.load("Zombie/Attack/left1.png"),
-    pygame.image.load("Zombie/Attack/left2.png"),
-    pygame.image.load("Zombie/Attack/left3.png"),
-    pygame.image.load("Zombie/Attack/left4.png"),
-    pygame.image.load("Zombie/Attack/left5.png"),
-    pygame.image.load("Zombie/Attack/left6.png")
+    load_image("Zombie/Attack/left1.png"),
+    load_image("Zombie/Attack/left2.png"),
+    load_image("Zombie/Attack/left3.png"),
+    load_image("Zombie/Attack/left4.png"),
+    load_image("Zombie/Attack/left5.png"),
+    load_image("Zombie/Attack/left6.png")
 ]
 zombie_dieRight = [
-    pygame.image.load("Zombie/Die/right1.png"),
-    pygame.image.load("Zombie/Die/right2.png"),
-    pygame.image.load("Zombie/Die/right3.png"),
-    pygame.image.load("Zombie/Die/right4.png"),
-    pygame.image.load("Zombie/Die/right5.png"),
-    pygame.image.load("Zombie/Die/right6.png")
+    load_image("Zombie/Die/right1.png"),
+    load_image("Zombie/Die/right2.png"),
+    load_image("Zombie/Die/right3.png"),
+    load_image("Zombie/Die/right4.png"),
+    load_image("Zombie/Die/right5.png"),
+    load_image("Zombie/Die/right6.png")
 ]
 zombie_dieLeft = [
-    pygame.image.load("Zombie/Die/left1.png"),
-    pygame.image.load("Zombie/Die/left2.png"),
-    pygame.image.load("Zombie/Die/left3.png"),
-    pygame.image.load("Zombie/Die/left4.png"),
-    pygame.image.load("Zombie/Die/left5.png"),
-    pygame.image.load("Zombie/Die/left6.png")
+    load_image("Zombie/Die/left1.png"),
+    load_image("Zombie/Die/left2.png"),
+    load_image("Zombie/Die/left3.png"),
+    load_image("Zombie/Die/left4.png"),
+    load_image("Zombie/Die/left5.png"),
+    load_image("Zombie/Die/left6.png")
 ]
-arl = pygame.image.load("arl.png")
-arr = pygame.image.load("arr.png")
-arup = pygame.image.load("arup.png")
-xbut = pygame.image.load("x.png")
-zbut = pygame.image.load("z.png")
-boss_bgicon = pygame.image.load('bgicon2.jpg')
-boss_headicon = pygame.image.load("headicon2.png")
-boss_bodyicon = pygame.image.load("bodyicon2.png")
-boss_health = pygame.image.load("health2.png")
+arl = load_image("arl.png")
+arr = load_image("arr.png")
+arup = load_image("arup.png")
+xbut = load_image("x.png")
+zbut = load_image("z.png")
+boss_bgicon = load_image('bgicon2.jpg')
+boss_headicon = load_image("headicon2.png")
+boss_bodyicon = load_image("bodyicon2.png")
+boss_health = load_image("health2.png")
 
 
 def input_name(screen):
-    bg = pygame.image.load('bgt.jpg')
+    bg = load_image('bgt.jpg')
     font = pygame.font.Font(None, 46)
     clock = pygame.time.Clock()
     input_box = pygame.Rect(445, 315, 180, 40)
@@ -892,18 +895,6 @@ def input_name(screen):
     text = ''
 
     while True:
-        screen.blit(bg, (0, 0))
-        textrect = font.render(text, True, color_of_text)
-        t = font.render('YOUR NAME:', True, color_of_text)
-        width = max(220, textrect.get_width() + 10)
-        input_box.w = width
-        screen.blit(textrect, (input_box.x + 5, input_box.y + 5))
-        screen.blit(t, (455, 270))
-        pygame.draw.rect(screen, color, input_box, 2)
-
-        pygame.display.flip()
-        clock.tick(30)
-
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -913,6 +904,10 @@ def input_name(screen):
                 else:
                     active = False
                 color = color_active if active else color_inactive
+            if event.type == pygame.MOUSEMOTION and pygame.mouse.get_focused():
+                pygame.mouse.set_visible(False)
+                cursor_sprites.update(*event.pos)
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_RETURN:
                     if text != '':
@@ -924,24 +919,60 @@ def input_name(screen):
                         text = text[:-1]
                     else:
                         text += event.unicode
+        screen.blit(bg, (0, 0))
+        textrect = font.render(text, True, color_of_text)
+        t = font.render('YOUR NAME:', True, color_of_text)
+        width = max(220, textrect.get_width() + 10)
+        input_box.w = width
+        screen.blit(textrect, (input_box.x + 5, input_box.y + 5))
+        screen.blit(t, (455, 270))
+        pygame.draw.rect(screen, color, input_box, 2)
+        cursor_sprites.draw(window)
+        pygame.display.flip()
+        clock.tick(30)
+
+
+class Button(pygame.sprite.Sprite):
+    def __init__(self, group, text, x, y):
+        super().__init__(group)
+        self.group = group
+        font = pygame.font.Font(None, 50)
+        self.text = font.render(text, True, (100, 255, 100))
+        self.image = pygame.Surface((350, 50),
+                                    pygame.SRCALPHA, 32)
+        pygame.draw.rect(self.image, pygame.Color("blue"),
+                         (0, 0, 300, 40), 0)
+        self.image.blit(self.text, ((350 - self.text.get_width()) // 2 - 20, 5))
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+
+    def check(self, pos):
+        if self.rect.collidepoint(pos):
+            return
 
 
 def start_window():
     global k1, bg_coords, pause
-    white = [255, 255, 255]
-    font = pygame.font.Font(None, 50)
-    text = font.render("Press space to play", True, white)
+
+    buttons = pygame.sprite.Group()
+    button1 = Button(buttons, 'Adventure', 400, 450)
+    button2 = Button(buttons, 'Zen-mode', 400, 510)
+    button3 = Button(buttons, 'Settings', 400, 570)
     pause0_s.play()
     time = 0
     while True:
 
         clock.tick(30)
-        k1 += 1
         time += 1
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
+            if event.type == pygame.MOUSEMOTION and pygame.mouse.get_focused():
+                pygame.mouse.set_visible(False)
+                cursor_sprites.update(*event.pos)
+
 
         for x in range(2):
             window.blit(bg_menu, (bg_coords[x], 0))
@@ -952,16 +983,14 @@ def start_window():
 
         window.blit(logo, [50, 100])
 
-        if not (k1 % 30 > 15):
-            window.blit(text, [400, 570])
-
         keys = pygame.key.get_pressed()
 
         if (keys[pygame.K_SPACE] or keys[pygame.K_KP_ENTER] or pygame.mouse.get_pressed()[0] or joy.get_button(
                 6) or joy.get_button(7) or keys[pygame.K_ESCAPE]) and time > 5:
             pause1_s.play()
             break
-
+        buttons.draw(window)
+        cursor_sprites.draw(window)
         pygame.display.update()
 
 
@@ -981,6 +1010,10 @@ def pause():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
+            if event.type == pygame.MOUSEMOTION and pygame.mouse.get_focused():
+                pygame.mouse.set_visible(False)
+                cursor_sprites.update(*event.pos)
+
 
         for x in range(2):
             window.blit(bg_menu, (bg_coords[x], 0))
@@ -999,7 +1032,53 @@ def pause():
             pause1_s.play()
             pygame.mixer.music.unpause()
             break
+        cursor_sprites.draw(window)
+        pygame.display.update()
 
+
+def end():
+    win_sound.play()
+    congratulation.play()
+    k1 = 0
+    white = [255, 255, 255]
+    font = pygame.font.Font(None, 60)
+    font2 = pygame.font.Font(None, 100)
+    text1 = font.render("Congratulations!", True, white)
+    text2 = font.render("You defeated the boss and won the game!", True, white)
+    text3 = font.render("Your time:", True, white)
+    text4 = font2.render(result, True, white)
+    bg_coords = [0, xw]
+    while True:
+
+        clock.tick(30)
+        k1 += 1
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+            if event.type == pygame.MOUSEMOTION and pygame.mouse.get_focused():
+                pygame.mouse.set_visible(False)
+                cursor_sprites.update(*event.pos)
+
+
+        for x in range(2):
+            window.blit(bg_menu, (bg_coords[x], 0))
+            bg_coords[x] -= 3
+
+        if bg_coords[0] < -xw:
+            bg_coords = [0, xw]
+
+        window.blit(text1, [350, 130])
+        window.blit(text2, [170, 200])
+        window.blit(text3, [170, 300])
+        window.blit(text4, [400, 285])
+
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_SPACE] or keys[pygame.K_KP_ENTER] or pygame.mouse.get_pressed()[0] or joy.get_button(
+                6) or joy.get_button(7):
+            pause1_s.play()
+            break
+        cursor_sprites.draw(window)
         pygame.display.update()
 
 
@@ -1040,7 +1119,7 @@ def die():
 
 
 def leaderboard():
-    bg = pygame.image.load('bgt.jpg')
+    bg = load_image('bgt.jpg')
     with open('leaderboard.txt', 'a') as file:
         file.write(player_name + '$' + str(round(time.clock() - start_time - pause_time)) + '\n')
     board = [line.rstrip('\n').split('$') for line in open('leaderboard.txt', 'r').readlines()]
@@ -1061,6 +1140,10 @@ def leaderboard():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
+            if event.type == pygame.MOUSEMOTION and pygame.mouse.get_focused():
+                pygame.mouse.set_visible(False)
+                cursor_sprites.update(*event.pos)
+
 
         for n in range(len(board)):
             time1 = str(board[n][0] // 60) + ' min ' + str(board[n][0] % 60) + ' sec'
@@ -1074,23 +1157,20 @@ def leaderboard():
         if (keys[pygame.K_SPACE] or keys[pygame.K_KP_ENTER] or pygame.mouse.get_pressed()[0] or joy.get_button(
                 6) or joy.get_button(7) or keys[pygame.K_ESCAPE]):
             break
-
+        cursor_sprites.draw(window)
         clock.tick(30)
         pygame.display.update()
 
 
 while True:  # главный цикл
     pygame.mixer.music.stop()
-    pygame.mixer.music.load('Sounds/music.ogg')
+    pygame.mixer.music.load('data/Sounds/music.ogg')
     pygame.mixer.music.play(-1)
     pygame.mixer.music.set_volume(0.4)
-    player_name = input_name(window)
     start_window()
     history(hist1)
     y = yw - h - downLine + 2
     lastMove = 'right'
-    plasmaSpeed = 25
-    enemySpeed = 2
     kills = 0
     hero_health = max_hero_health
     pygame.mixer.music.set_volume(0.3)
@@ -1135,7 +1215,7 @@ while True:  # главный цикл
         font.render('Use X to beat', True, color_of_text)
     ]
     pygame.mixer.music.stop()
-    pygame.mixer.music.load('Sounds/training.ogg')
+    pygame.mixer.music.load('data/Sounds/training.ogg')
     pygame.mixer.music.play(-1)
     pygame.mixer.music.set_volume(0.2)
     skip_text = font.render('Press SPACE to skip', True, color_of_text)
@@ -1238,6 +1318,9 @@ while True:  # главный цикл
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     play = False
+            if event.type == pygame.MOUSEMOTION and pygame.mouse.get_focused():
+                pygame.mouse.set_visible(False)
+                cursor_sprites.update(*event.pos)
 
         damm = True
 
@@ -1284,7 +1367,7 @@ while True:  # главный цикл
     lastx = x
     y = yw - h - downLine
     pygame.mixer.music.stop()
-    pygame.mixer.music.load('Sounds/soundtrack.ogg')
+    pygame.mixer.music.load('data/Sounds/soundtrack.ogg')
     pygame.mixer.music.play(-1)
     pygame.mixer.music.set_volume(0.5)
 
@@ -1311,7 +1394,7 @@ while True:  # главный цикл
 
         if kills >= kills_to_boss:
             pygame.mixer.music.stop()
-            pygame.mixer.music.load('Sounds/final_boss.ogg')
+            pygame.mixer.music.load('data/Sounds/final_boss.ogg')
             pygame.mixer.music.play(-1)
             pygame.mixer.music.set_volume(0.2)
             boss = True
@@ -1425,6 +1508,9 @@ while True:  # главный цикл
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
+            if event.type == pygame.MOUSEMOTION and pygame.mouse.get_focused():
+                pygame.mouse.set_visible(False)
+                cursor_sprites.update(*event.pos)
 
         damm = True
         for en in enemies:
@@ -1436,7 +1522,7 @@ while True:  # главный цикл
                 if en.hurtcircle > 5:
                     en.hurt = False
                     en.hurtcircle = 0
-                if not (en.hurt) and (en.last_attack > 5):
+                if not (en.hurt) and (en.last_attack > 9):
                     if ((en.x > x) and (en.x + 60 < x + w)) or ((en.x + 83 - 50 > x) and (en.x + 83 < x + w)):
                         if y > en.y - h:
                             en.attack = True
@@ -1517,7 +1603,7 @@ while True:  # главный цикл
 
     fires = []
     k2 = 0
-    boss_en = Boss(1183, yw - 128 - downLine, 12, 10)
+    boss_en = Boss(1183, yw - 128 - downLine, 9, 5)  ###
     boss_en.bombs = []
     boss_en.bb = []
     for rock in rocks_t:
@@ -1620,9 +1706,8 @@ while True:  # главный цикл
             if (xa1 > (boss_en.x + 40)) and (xa1 < (boss_en.x + 88)) or (xa2 > (boss_en.x + 40)) and (
                         xa2 < (boss_en.x + 88)):
                 attack_s.play()
-                if boss_en.crouch:
-                    boss_en.hit()
-                    boss_en.health -= 2
+                boss_en.get_dam(2)
+
             else:
                 for en in enemies:
                     if (xa1 > (en.x + 13)) and (xa1 < (en.x + 66)) or (xa2 > (en.x + 13)) and (xa2 < (en.x + 66)):
@@ -1686,6 +1771,9 @@ while True:  # главный цикл
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
+            if event.type == pygame.MOUSEMOTION and pygame.mouse.get_focused():
+                pygame.mouse.set_visible(False)
+                cursor_sprites.update(*event.pos)
 
         damm = True
         for en in enemies:
@@ -1755,9 +1843,7 @@ while True:  # главный цикл
         for bullet in bullets:
             if (bullet.x > (boss_en.x + 40)) and (bullet.x < (boss_en.x + 88)):
                 rem_bul.append(bullet)
-                if boss_en.crouch:
-                    boss_en.health -= 1
-                boss_en.crouch = False
+                boss_en.get_dam(1)
                 boss_en.hit()
             else:
                 for en in enemies:
@@ -1808,10 +1894,11 @@ while True:  # главный цикл
             result = round(time.clock() - start_time - pause_time)
             result = str(result // 60) + ' min ' + str(result % 60) + ' sec'
             pygame.mixer.music.stop()
-            pygame.mixer.music.load('Sounds/music.ogg')
+            pygame.mixer.music.load('data/Sounds/music.ogg')
             pygame.mixer.music.play(-1)
             pygame.mixer.music.set_volume(0.4)
             end()
+            player_name = input_name(window)
             leaderboard()
             break
 
