@@ -25,7 +25,7 @@ else:
     joy = Joy()
 
 pygame.mixer.init()
-window = pygame.display.set_mode((xw, yw), pygame.FULLSCREEN)
+window = pygame.display.set_mode((xw, yw))  # , pygame.FULLSCREEN)
 
 pygame.display.set_caption("Guardians of the Galaxy - Starlord Adventures")
 
@@ -138,10 +138,10 @@ def draw_time():
 
 
 class Particle(pygame.sprite.Sprite):
-    fire = [load_image('b1.png'), load_image('b2.png', -1)]
+    fire = [load_image('b1.png'), load_image('b2.png'), load_image('b3.png')]
     for scale in (9, 12, 22):
-        fire.append(pygame.transform.scale(fire[0], (scale, scale)))
-        fire.append(pygame.transform.scale(fire[1], (scale, scale)))
+        for x in range(len(fire)):
+            fire.append(pygame.transform.scale(fire[x], (scale, scale)))
 
     def __init__(self, pos, dx, dy):
         super().__init__(all_sprites)
@@ -598,7 +598,7 @@ def drawWindow():
     for bullet in bullets:
         bullet.draw(window, bullet_image)
 
-    if not (boss):
+    if not (boss) and adventure:
         pygame.draw.rect(window, (160, 30, 160), [70, 650, 1000, 20])
         if kills <= kills_to_boss:
             pygame.draw.rect(window, (50, 160, 160), [70, 650, 1000 // kills_to_boss * kills, 20])
@@ -703,6 +703,7 @@ def drawTrainingWindow():
     cursor_sprites.draw(window)
 
     pygame.display.update()
+
 
 start_s = pygame.mixer.Sound('data/Sounds/start.wav')
 start_s.set_volume(0.1)
@@ -935,30 +936,43 @@ def input_name(screen):
 class Button(pygame.sprite.Sprite):
     def __init__(self, group, text, x, y):
         super().__init__(group)
+        self.mode = text
         self.group = group
         font = pygame.font.Font(None, 50)
-        self.text = font.render(text, True, (100, 255, 100))
-        self.image = pygame.Surface((350, 50),
-                                    pygame.SRCALPHA, 32)
-        pygame.draw.rect(self.image, pygame.Color("blue"),
+        self.text = font.render(text, True, (255, 69, 0))
+        self.active_image = pygame.Surface((350, 50),
+                                           pygame.SRCALPHA, 32)
+
+        pygame.draw.rect(self.active_image, (64, 224, 208),
                          (0, 0, 300, 40), 0)
-        self.image.blit(self.text, ((350 - self.text.get_width()) // 2 - 20, 5))
+        self.active_image.blit(self.text, ((350 - self.text.get_width()) // 2 - 20, 5))
+        self.unactive_image = pygame.Surface((350, 50),
+                                             pygame.SRCALPHA, 32)
+        pygame.draw.rect(self.unactive_image, (255, 165, 0),
+                         (0, 0, 300, 40), 0)
+        self.unactive_image.blit(self.text, ((350 - self.text.get_width()) // 2 - 20, 5))
+        self.image = self.unactive_image
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
 
     def check(self, pos):
         if self.rect.collidepoint(pos):
-            return
+            self.image = self.active_image
+            return self.mode
+        else:
+            self.image = self.unactive_image
+            return False
 
 
 def start_window():
     global k1, bg_coords, pause
 
     buttons = pygame.sprite.Group()
-    button1 = Button(buttons, 'Adventure', 400, 450)
-    button2 = Button(buttons, 'Zen-mode', 400, 510)
-    button3 = Button(buttons, 'Settings', 400, 570)
+    button1 = Button(buttons, 'Adventure', 400, 430)
+    button2 = Button(buttons, 'Zen-mode', 400, 490)
+    button3 = Button(buttons, 'Tutorial', 400, 550)
+    button4 = Button(buttons, 'Settings', 400, 610)
     pause0_s.play()
     time = 0
     while True:
@@ -966,13 +980,20 @@ def start_window():
         clock.tick(30)
         time += 1
 
+        keys = pygame.key.get_pressed()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
             if event.type == pygame.MOUSEMOTION and pygame.mouse.get_focused():
                 pygame.mouse.set_visible(False)
                 cursor_sprites.update(*event.pos)
-
+                for button in buttons:
+                    button.check(event.pos)
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                for button in buttons:
+                    if button.check(event.pos):
+                        return button.check(event.pos)
 
         for x in range(2):
             window.blit(bg_menu, (bg_coords[x], 0))
@@ -982,13 +1003,7 @@ def start_window():
             bg_coords = [0, xw]
 
         window.blit(logo, [50, 100])
-
-        keys = pygame.key.get_pressed()
-
-        if (keys[pygame.K_SPACE] or keys[pygame.K_KP_ENTER] or pygame.mouse.get_pressed()[0] or joy.get_button(
-                6) or joy.get_button(7) or keys[pygame.K_ESCAPE]) and time > 5:
-            pause1_s.play()
-            break
+        
         buttons.draw(window)
         cursor_sprites.draw(window)
         pygame.display.update()
@@ -1013,7 +1028,6 @@ def pause():
             if event.type == pygame.MOUSEMOTION and pygame.mouse.get_focused():
                 pygame.mouse.set_visible(False)
                 cursor_sprites.update(*event.pos)
-
 
         for x in range(2):
             window.blit(bg_menu, (bg_coords[x], 0))
@@ -1059,7 +1073,6 @@ def end():
             if event.type == pygame.MOUSEMOTION and pygame.mouse.get_focused():
                 pygame.mouse.set_visible(False)
                 cursor_sprites.update(*event.pos)
-
 
         for x in range(2):
             window.blit(bg_menu, (bg_coords[x], 0))
@@ -1144,7 +1157,6 @@ def leaderboard():
                 pygame.mouse.set_visible(False)
                 cursor_sprites.update(*event.pos)
 
-
         for n in range(len(board)):
             time1 = str(board[n][0] // 60) + ' min ' + str(board[n][0] % 60) + ' sec'
             text1 = font1.render(board[n][1], True, color)
@@ -1167,8 +1179,11 @@ while True:  # главный цикл
     pygame.mixer.music.load('data/Sounds/music.ogg')
     pygame.mixer.music.play(-1)
     pygame.mixer.music.set_volume(0.4)
-    start_window()
-    history(hist1)
+    mode = start_window()
+    adventure = mode == 'Adventure'
+    zen = mode == 'Zen-mode'
+    settings = mode == 'Settings'
+    tutorial = mode == 'Tutorial'
     y = yw - h - downLine + 2
     lastMove = 'right'
     kills = 0
@@ -1220,144 +1235,143 @@ while True:  # главный цикл
     pygame.mixer.music.set_volume(0.2)
     skip_text = font.render('Press SPACE to skip', True, color_of_text)
     hint = 0
+    if tutorial:
+        history(hist1)
+        while play:  # Обучение
 
-    while play:  # Обучение
+            clock.tick(30)
+            if gunattack:
+                guncount += 1
 
-        clock.tick(30)
-        if gunattack:
-            guncount += 1
+            lastpause += 1
 
-        lastpause += 1
+            if attack:
+                attackcircle += 1
+                if attackcircle > 12:
+                    attack = False
+                    attackcircle = 0
 
-        if attack:
-            attackcircle += 1
-            if attackcircle > 12:
-                attack = False
-                attackcircle = 0
+            if non_damage:
+                non_damcircle += 1
+                if non_damcircle > 45:
+                    non_damage = False
+                    non_damcircle = 0
 
-        if non_damage:
-            non_damcircle += 1
-            if non_damcircle > 45:
-                non_damage = False
-                non_damcircle = 0
+            if gunattack:
+                lastgunattack += 1
+            if lastgunattack > 12:
+                gunattack = False
+                lastgunattack = 0
 
-        if gunattack:
-            lastgunattack += 1
-        if lastgunattack > 12:
-            gunattack = False
-            lastgunattack = 0
+            k1 += 1
 
-        k1 += 1
+            xc = 0
+            yc = 0
+            pygame.time.delay(25)
 
-        xc = 0
-        yc = 0
-        pygame.time.delay(25)
+            keys = pygame.key.get_pressed()
 
-        keys = pygame.key.get_pressed()
-
-        if (joy.get_button(2) or keys[pygame.K_x]) and not (keys[pygame.K_LEFT]) and not (
-                keys[pygame.K_RIGHT]) and not (jump) and not (hit):
-            if hint == 3:
-                hint = 0
-            attack = True
-            if lastMove == 'left':
-                xa1 = x + 3
-                xa2 = x + 40
-            else:
-                xa1 = x + 115
-                xa2 = x + 88
-
-
-        elif (joy.get_button(3) or keys[pygame.K_z]) and not (keys[pygame.K_LEFT]) and not (
-                keys[pygame.K_RIGHT]) and not (jump) and not (hit):
-            if guncount > 12 and not gunattack:
-                if hint == 2:
-                    hint = 3
-                if lastMove == 'right':
-                    side = 1
+            if (joy.get_button(2) or keys[pygame.K_x]) and not (keys[pygame.K_LEFT]) and not (
+                    keys[pygame.K_RIGHT]) and not (jump) and not (hit):
+                if hint == 3:
+                    hint = 0
+                attack = True
+                if lastMove == 'left':
+                    xa1 = x + 3
+                    xa2 = x + 40
                 else:
-                    side = -1
-                gunattack = True
-                gunattack_s.play()
-                bullets.append(Plasma(round(x + w // 2), round(y + h // 2), side))
-                guncount = 0
+                    xa1 = x + 115
+                    xa2 = x + 88
 
-        if (joy.get_hat(0) == (-1, 0) or keys[pygame.K_LEFT] or joy.get_axis(0) < -0.05) and not (attack) and not (
-                gunattack):
-            if hint == 0:
-                hint = 1
-            xc = -speed
-            left = True
-            right = False
-            lastMove = 'left'
 
-        elif (joy.get_hat(0) == (1, 0) or keys[pygame.K_RIGHT] or joy.get_axis(0) > 0.05) and not (attack) and not (
-                gunattack):
-            if hint == 0:
-                hint = 1
-            xc = speed
-            left = False
-            right = True
-            lastMove = 'right'
+            elif (joy.get_button(3) or keys[pygame.K_z]) and not (keys[pygame.K_LEFT]) and not (
+                    keys[pygame.K_RIGHT]) and not (jump) and not (hit):
+                if guncount > 12 and not gunattack:
+                    if hint == 2:
+                        hint = 3
+                    if lastMove == 'right':
+                        side = 1
+                    else:
+                        side = -1
+                    gunattack = True
+                    gunattack_s.play()
+                    bullets.append(Plasma(round(x + w // 2), round(y + h // 2), side))
+                    guncount = 0
 
-        else:
-            left = False
-            right = False
+            if (joy.get_hat(0) == (-1, 0) or keys[pygame.K_LEFT] or joy.get_axis(0) < -0.05) and not (attack) and not (
+                    gunattack):
+                if hint == 0:
+                    hint = 1
+                xc = -speed
+                left = True
+                right = False
+                lastMove = 'left'
 
-        if (joy.get_button(0) or keys[pygame.K_UP]) and not (hit) and not (attack) and not (gunattack) and (
-                        jumps == 0 or k >= 3 and jumps == 1):
-            if hint == 1:
-                hint = 2
-            k = 0
-            jumps += 1
-            jump = True
+            elif (joy.get_hat(0) == (1, 0) or keys[pygame.K_RIGHT] or joy.get_axis(0) > 0.05) and not (attack) and not (
+                    gunattack):
+                if hint == 0:
+                    hint = 1
+                xc = speed
+                left = False
+                right = True
+                lastMove = 'right'
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    play = False
-            if event.type == pygame.MOUSEMOTION and pygame.mouse.get_focused():
-                pygame.mouse.set_visible(False)
-                cursor_sprites.update(*event.pos)
-
-        damm = True
-
-        for bullet in bullets:
-            if bullet.x < xw and bullet.x > 0:
-                bullet.x += bullet.speed
             else:
-                bullets.pop(bullets.index(bullet))
+                left = False
+                right = False
 
-            for bul in rem_bul:
-                bullets.pop(bullets.index(bul))
-            rem_bul = []
-
-        if jump:
-            move = -jumpSpeed + g * k
-            k += 1
-            if move + y > yw - h - downLine + 2:
-                move = yw - h - downLine + 2 - y
+            if (joy.get_button(0) or keys[pygame.K_UP]) and not (hit) and not (attack) and not (gunattack) and (
+                            jumps == 0 or k >= 3 and jumps == 1):
+                if hint == 1:
+                    hint = 2
                 k = 0
-                jump = False
-                jumps = 0
-            yc = move
-        x = x + xc
-        y = y + yc
+                jumps += 1
+                jump = True
 
-        if x < 0:
-            x = 0
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_SPACE:
+                        play = False
+                if event.type == pygame.MOUSEMOTION and pygame.mouse.get_focused():
+                    pygame.mouse.set_visible(False)
+                    cursor_sprites.update(*event.pos)
 
-        if x > xw - w:
-            x = xw - w
+            damm = True
 
-        if y == yw - h - downLine:
-            lastx = x
+            for bullet in bullets:
+                if bullet.x < xw and bullet.x > 0:
+                    bullet.x += bullet.speed
+                else:
+                    bullets.pop(bullets.index(bullet))
 
-        drawTrainingWindow()
+                for bul in rem_bul:
+                    bullets.pop(bullets.index(bul))
+                rem_bul = []
 
-    history(hist2)
+            if jump:
+                move = -jumpSpeed + g * k
+                k += 1
+                if move + y > yw - h - downLine + 2:
+                    move = yw - h - downLine + 2 - y
+                    k = 0
+                    jump = False
+                    jumps = 0
+                yc = move
+            x = x + xc
+            y = y + yc
+
+            if x < 0:
+                x = 0
+
+            if x > xw - w:
+                x = xw - w
+
+            if y == yw - h - downLine:
+                lastx = x
+
+            drawTrainingWindow()
 
     play = True
 
@@ -1371,344 +1385,86 @@ while True:  # главный цикл
     pygame.mixer.music.play(-1)
     pygame.mixer.music.set_volume(0.5)
 
-    while play:  # Цикл предбоссового уровня
+    if adventure or zen:
+        history(hist2)
+        while play:  # Цикл предбоссового уровня
 
-        clock.tick(30)
+            clock.tick(30)
 
-        if gunattack:
-            guncount += 1
+            if gunattack:
+                guncount += 1
 
-        lastpause += 1
+            lastpause += 1
 
-        if circlekills == 10:  # Добавляет единицу hp за количество фрагов, кратное 10
-            hill_s.play()
-            if hero_health < max_hero_health:
-                hero_health += 1
-            circlekills = 0
+            if circlekills == 10:  # Добавляет единицу hp за количество фрагов, кратное 10
+                hill_s.play()
+                if hero_health < max_hero_health:
+                    hero_health += 1
+                circlekills = 0
 
-        if attack:
-            attackcircle += 1
-            if attackcircle > 12:
-                attack = False
-                attackcircle = 0
+            if attack:
+                attackcircle += 1
+                if attackcircle > 12:
+                    attack = False
+                    attackcircle = 0
 
-        if kills >= kills_to_boss:
-            pygame.mixer.music.stop()
-            pygame.mixer.music.load('data/Sounds/final_boss.ogg')
-            pygame.mixer.music.play(-1)
-            pygame.mixer.music.set_volume(0.2)
-            boss = True
-            break
+            if kills >= kills_to_boss and adventure:
+                pygame.mixer.music.stop()
+                pygame.mixer.music.load('data/Sounds/final_boss.ogg')
+                pygame.mixer.music.play(-1)
+                pygame.mixer.music.set_volume(0.2)
+                boss = True
+                break
 
-        if hit:
-            hitcircle += 1
-            non_damage = True
-            if hitcircle > 2:
-                hit = False
-                hitcircle = 0
+            if hit:
+                hitcircle += 1
+                non_damage = True
+                if hitcircle > 2:
+                    hit = False
+                    hitcircle = 0
 
-        if non_damage:
-            non_damcircle += 1
-            if non_damcircle > 45:
-                non_damage = False
-                non_damcircle = 0
+            if non_damage:
+                non_damcircle += 1
+                if non_damcircle > 45:
+                    non_damage = False
+                    non_damcircle = 0
 
-        if gunattack:
-            lastgunattack += 1
-        if lastgunattack > 12:
-            gunattack = False
-            lastgunattack = 0
+            if gunattack:
+                lastgunattack += 1
+            if lastgunattack > 12:
+                gunattack = False
+                lastgunattack = 0
 
-        k1 += 1
+            k1 += 1
 
-        enemyAnimCount += 1
+            enemyAnimCount += 1
 
-        if k1 % random.choice([60, 40, 180]) == 0 and (len(enemies) < max_count_enemy):
-            enemies.append(Enemy(random.choice([-84, xw + 83]), yw - 91 - downLine, enemySpeed, max_enemy_health))
+            if k1 % random.choice([60, 40, 180]) == 0 and (len(enemies) < max_count_enemy):
+                enemies.append(Enemy(random.choice([-84, xw + 83]), yw - 91 - downLine, enemySpeed, max_enemy_health))
 
-        xc = 0
-        yc = 0
-        pygame.time.delay(25)
+            xc = 0
+            yc = 0
+            pygame.time.delay(25)
 
-        keys = pygame.key.get_pressed()
+            keys = pygame.key.get_pressed()
 
-        if (joy.get_button(7) or keys[pygame.K_ESCAPE]) and lastpause > 5:
-            st = time.clock()
-            pause()
-            pause_time += time.clock() - st
-            lastpause = 0
+            if (joy.get_button(7) or keys[pygame.K_ESCAPE]) and lastpause > 5:
+                st = time.clock()
+                pause()
+                pause_time += time.clock() - st
+                lastpause = 0
 
-        if (joy.get_button(2) or keys[pygame.K_x]) and not (keys[pygame.K_LEFT]) and not (
-                keys[pygame.K_RIGHT]) and not (jump) and not (hit):
-            attack = True
-            if lastMove == 'left':
-                xa1 = x + 3
-                xa2 = x + 40
-            else:
-                xa1 = x + 115
-                xa2 = x + 88
-
-        if attack and attackcircle == 6:
-            for en in enemies:
-                if (xa1 > (en.x + 13)) and (xa1 < (en.x + 66)) or (xa2 > (en.x + 13)) and (xa2 < (en.x + 66)):
-                    attack_s.play()
-                    zombie_hit.play()
-                    if en.health > damage_att:
-                        en.health -= damage_att
-                        en.hurt = True
-                    else:
-                        die_en.append(en)
-                        kills += 1
-                        circlekills += 1
-                    if lastMove == 'left':
-                        en.x -= fhatt
-                    else:
-                        en.x += fhatt
-                    break
-
-
-        elif (joy.get_button(3) or keys[pygame.K_z]) and not (keys[pygame.K_LEFT]) and not (
-                keys[pygame.K_RIGHT]) and not (jump) and not (hit):
-            if guncount > 12 and not gunattack:
-                if hint == 2:
-                    hint = 3
-                if lastMove == 'right':
-                    side = 1
+            if (joy.get_button(2) or keys[pygame.K_x]) and not (keys[pygame.K_LEFT]) and not (
+                    keys[pygame.K_RIGHT]) and not (jump) and not (hit):
+                attack = True
+                if lastMove == 'left':
+                    xa1 = x + 3
+                    xa2 = x + 40
                 else:
-                    side = -1
-                gunattack = True
-                gunattack_s.play()
-                bullets.append(Plasma(round(x + w // 2), round(y + h // 2), side))
-                guncount = 0
+                    xa1 = x + 115
+                    xa2 = x + 88
 
-        if (joy.get_hat(0) == (-1, 0) or keys[pygame.K_LEFT] or joy.get_axis(0) < -0.05) and not (attack) and not (
-                gunattack):
-            xc = -speed
-            left = True
-            right = False
-            lastMove = 'left'
-
-        elif (joy.get_hat(0) == (1, 0) or keys[pygame.K_RIGHT] or joy.get_axis(0) > 0.05) and not (attack) and not (
-                gunattack):
-            xc = speed
-            left = False
-            right = True
-            lastMove = 'right'
-
-        else:
-            left = False
-            right = False
-
-        if (joy.get_button(0) or keys[pygame.K_UP]) and not (hit) and not (attack) and not (gunattack) and (
-                        jumps == 0 or k >= 3 and jumps == 1):
-            k = 0
-            jumps += 1
-            jump = True
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-            if event.type == pygame.MOUSEMOTION and pygame.mouse.get_focused():
-                pygame.mouse.set_visible(False)
-                cursor_sprites.update(*event.pos)
-
-        damm = True
-        for en in enemies:
-            if damm:
-                en.last_attack += 1
-                en.move(lastx)
-                if en.hurt:
-                    en.hurtcircle += 1
-                if en.hurtcircle > 5:
-                    en.hurt = False
-                    en.hurtcircle = 0
-                if not (en.hurt) and (en.last_attack > 9):
-                    if ((en.x > x) and (en.x + 60 < x + w)) or ((en.x + 83 - 50 > x) and (en.x + 83 < x + w)):
-                        if y > en.y - h:
-                            en.attack = True
-                            zombie_attack.play()
-                if en.attack:
-                    en.attackcircle += 1
-                if en.attackcircle > 11:
-                    en.attack = False
-                    en.last_attack = 0
-                    en.attackcircle = 0
-                    if ((en.x > x) and (en.x + 60 < x + w)) or ((en.x + 83 - 50 > x) and (en.x + 83 < x + w)):
-                        if y + 76 > en.y and not (non_damage):
-                            damm = False
-                            hero_health -= 1
-                            if en.left:
-                                x -= fenatt
-                            else:
-                                x += fenatt
-                            if hero_health > 0:
-                                hit = True
-                                hit_s.play()
-                                hitcircle = 0
-                            else:
-                                die()
-
-        for bullet in bullets:
-            if bullet.x < xw and bullet.x > 0:
-                bullet.x += bullet.speed
-            else:
-                bullets.pop(bullets.index(bullet))
-
-        for en in enemies:
-            for bullet in bullets:
-                if (bullet.x > (en.x + 15)) and (bullet.x < (en.x + 68)):
-                    rem_bul.append(bullet)
-                    zombie_hit.play()
-                    if en.health > damage_bul:
-                        en.health -= damage_bul
-                        en.hurt = True
-                    else:
-                        die_en.append(en)
-                        kills += 1
-                        circlekills += 1
-
-            for bul in rem_bul:
-                bullets.pop(bullets.index(bul))
-            rem_bul = []
-
-        for en in die_en:
-            if en in enemies:
-                enemies.pop(enemies.index(en))
-            en.diecircle += 1
-
-        if jump:
-            move = -jumpSpeed + g * k
-            k += 1
-            if move + y > yw - h - downLine:
-                move = yw - h - downLine - y
-                k = 0
-                jump = False
-                jumps = 0
-            yc = move
-        x = x + xc
-        y = y + yc
-
-        if x < 0:
-            x = 0
-
-        if x > xw - w:
-            x = xw - w
-
-        if y == yw - h - downLine:
-            lastx = x
-
-        drawWindow()
-
-    history(hist3)
-
-    fires = []
-    k2 = 0
-    boss_en = Boss(1183, yw - 128 - downLine, 9, 5)  ###
-    boss_en.bombs = []
-    boss_en.bb = []
-    for rock in rocks_t:
-        rock.chance = (250, 275, 225, 150)
-    while play:  # Битва с боссом
-        clock.tick(30)
-
-        if gunattack:
-            guncount += 1
-
-        lastpause += 1
-
-        if k2 == 20:
-            fires.append(Fire(0, 496, window))
-            fires.append(Fire(1070, 496, window))
-        if k2 == 40:
-            fires.append(Fire(60, 496, window))
-            fires.append(Fire(1010, 496, window))
-        if k2 == 60:
-            fires.append(Fire(120, 496, window))
-            fires.append(Fire(950, 496, window))
-
-        boss_en.move(x)
-
-        if k2 % 15 == 0:
-            for fire in fires:
-                if ((x + 43 < fire.x and (x + 88) > fire.x) or (x + 43 < (fire.x + 60) and x + 43 > fire.x)) and (
-                            y + 116) > 555:
-                    if not (non_damage):
-                        hero_health -= 1
-                        if hero_health > 0:
-                            hit = True
-                            hit_s.play()
-                            hitcircle = 0
-                        else:
-                            die()
-                        break
-
-        if circlekills == 10:  # Добавляет единицу hp за количество фрагов, кратное 10
-            hill_s.play()
-            if hero_health < max_hero_health:
-                hero_health += 1
-            circlekills = 0
-
-        if attack:
-            attackcircle += 1
-            if attackcircle > 12:
-                attack = False
-                attackcircle = 0
-
-        if hit:
-            hitcircle += 1
-            non_damage = True
-            if hitcircle > 2:
-                hit = False
-                hitcircle = 0
-
-        if non_damage:
-            non_damcircle += 1
-            if non_damcircle > 45:
-                non_damage = False
-                non_damcircle = 0
-
-        if gunattack:
-            lastgunattack += 1
-        if lastgunattack > 12:
-            gunattack = False
-            lastgunattack = 0
-
-        k1 += 1
-        k2 += 1
-
-        enemyAnimCount += 1
-
-        xc = 0
-        yc = 0
-        pygame.time.delay(25)
-
-        keys = pygame.key.get_pressed()
-
-        if (joy.get_button(7) or keys[pygame.K_ESCAPE]) and lastpause > 5:
-            st = time.clock()
-            pause()
-            pause_time += time.clock() - st
-            pauseb = True
-            lastpause = 0
-
-        if (joy.get_button(2) or keys[pygame.K_x]) and not (keys[pygame.K_LEFT]) and not (
-                keys[pygame.K_RIGHT]) and not (
-                jump) and not (hit):
-            attack = True
-            if lastMove == 'left':
-                xa1 = x + 3
-                xa2 = x + 40
-            else:
-                xa1 = x + 115
-                xa2 = x + 88
-
-        if attack and attackcircle == 6:
-            if (xa1 > (boss_en.x + 40)) and (xa1 < (boss_en.x + 88)) or (xa2 > (boss_en.x + 40)) and (
-                        xa2 < (boss_en.x + 88)):
-                attack_s.play()
-                boss_en.get_dam(2)
-
-            else:
+            if attack and attackcircle == 6:
                 for en in enemies:
                     if (xa1 > (en.x + 13)) and (xa1 < (en.x + 66)) or (xa2 > (en.x + 13)) and (xa2 < (en.x + 66)):
                         attack_s.play()
@@ -1727,126 +1483,95 @@ while True:  # главный цикл
                         break
 
 
-        elif (joy.get_button(3) or keys[pygame.K_z]) and not (keys[pygame.K_LEFT]) and not (
-                keys[pygame.K_RIGHT]) and not (
-                jump) and not (hit):
-            if guncount > 12 and not gunattack:
-                if hint == 2:
-                    hint = 3
-                if lastMove == 'right':
-                    side = 1
-                else:
-                    side = -1
-                gunattack = True
-                gunattack_s.play()
-                bullets.append(Plasma(round(x + w // 2), round(y + h // 2), side))
-                guncount = 0
+            elif (joy.get_button(3) or keys[pygame.K_z]) and not (keys[pygame.K_LEFT]) and not (
+                    keys[pygame.K_RIGHT]) and not (jump) and not (hit):
+                if guncount > 12 and not gunattack:
+                    if hint == 2:
+                        hint = 3
+                    if lastMove == 'right':
+                        side = 1
+                    else:
+                        side = -1
+                    gunattack = True
+                    gunattack_s.play()
+                    bullets.append(Plasma(round(x + w // 2), round(y + h // 2), side))
+                    guncount = 0
 
-        if (joy.get_hat(0) == (-1, 0) or keys[pygame.K_LEFT] or joy.get_axis(0) < -0.05 or (
-                        x > 863 and k2 < 70)) and not (attack) and not (
-                gunattack):
-            xc = -speed
-            left = True
-            right = False
-            lastMove = 'left'
+            if (joy.get_hat(0) == (-1, 0) or keys[pygame.K_LEFT] or joy.get_axis(0) < -0.05) and not (attack) and not (
+                    gunattack):
+                xc = -speed
+                left = True
+                right = False
+                lastMove = 'left'
 
-        elif (joy.get_hat(0) == (1, 0) or keys[pygame.K_RIGHT] or joy.get_axis(0) > 0.05 or (
-                        x < 140 and k2 < 70)) and not (attack) and not (
-                gunattack):
-            xc = speed
-            left = False
-            right = True
-            lastMove = 'right'
+            elif (joy.get_hat(0) == (1, 0) or keys[pygame.K_RIGHT] or joy.get_axis(0) > 0.05) and not (attack) and not (
+                    gunattack):
+                xc = speed
+                left = False
+                right = True
+                lastMove = 'right'
 
-        else:
-            left = False
-            right = False
-
-        if (joy.get_button(0) or keys[pygame.K_UP]) and not (hit) and not (attack) and not (gunattack) and (
-                        jumps == 0 or k >= 3 and jumps == 1):
-            k = 0
-            jumps += 1
-            jump = True
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-            if event.type == pygame.MOUSEMOTION and pygame.mouse.get_focused():
-                pygame.mouse.set_visible(False)
-                cursor_sprites.update(*event.pos)
-
-        damm = True
-        for en in enemies:
-            if damm:
-                en.last_attack += 1
-                en.move(lastx)
-                if en.hurt:
-                    en.hurtcircle += 1
-                if en.hurtcircle > 5:
-                    en.hurt = False
-                    en.hurtcircle = 0
-                if not (en.hurt) and (en.last_attack > 5):
-                    if ((en.x > x) and (en.x + 60 < x + w)) or ((en.x + 83 - 50 > x) and (en.x + 83 < x + w)):
-                        if y > en.y - h:
-                            en.attack = True
-                            zombie_attack.play()
-                if en.attack:
-                    en.attackcircle += 1
-                if en.attackcircle > 11:
-                    en.attack = False
-                    en.last_attack = 0
-                    en.attackcircle = 0
-                    if ((en.x > x) and (en.x + 60 < x + w)) or ((en.x + 83 - 50 > x) and (en.x + 83 < x + w)):
-                        if y + 76 > en.y and not (non_damage):
-                            damm = False
-                            hero_health -= 1
-                            if en.left:
-                                x -= fenatt
-                            else:
-                                x += fenatt
-                            if hero_health > 0:
-                                hit = True
-                                hit_s.play()
-                                hitcircle = 0
-                            else:
-                                die()
-        if ((x + 35) <= (boss_en.x + 35) and (x + 93) >= (boss_en.x + 35)) or (
-                        (x + 93) >= (boss_en.x + 93) and (x + 35) <= (boss_en.x + 93)):
-            if y >= 400 and not (non_damage) and not (boss_en.crouch):
-                hero_health -= 1
-                if boss_en.pos == 'right':
-                    x -= 50
-                else:
-                    x += 50
-                if hero_health > 0:
-                    hit = True
-                    hit_s.play()
-                    hitcircle = 0
-                else:
-                    die()
-
-        if boss_en.attack_check() and not (non_damage):
-            hero_health -= 1
-            if hero_health > 0:
-                hit = True
-                hit_s.play()
-                hitcircle = 0
             else:
-                die()
+                left = False
+                right = False
 
-        for bullet in bullets:
-            if bullet.x < xw and bullet.x > 0:
-                bullet.x += bullet.speed
-            else:
-                bullets.pop(bullets.index(bullet))
+            if (joy.get_button(0) or keys[pygame.K_UP]) and not (hit) and not (attack) and not (gunattack) and (
+                            jumps == 0 or k >= 3 and jumps == 1):
+                k = 0
+                jumps += 1
+                jump = True
 
-        for bullet in bullets:
-            if (bullet.x > (boss_en.x + 40)) and (bullet.x < (boss_en.x + 88)):
-                rem_bul.append(bullet)
-                boss_en.get_dam(1)
-                boss_en.hit()
-            else:
-                for en in enemies:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                if event.type == pygame.MOUSEMOTION and pygame.mouse.get_focused():
+                    pygame.mouse.set_visible(False)
+                    cursor_sprites.update(*event.pos)
+
+            damm = True
+            for en in enemies:
+                if damm:
+                    en.last_attack += 1
+                    en.move(lastx)
+                    if en.hurt:
+                        en.hurtcircle += 1
+                    if en.hurtcircle > 5:
+                        en.hurt = False
+                        en.hurtcircle = 0
+                    if not (en.hurt) and (en.last_attack > 9):
+                        if ((en.x > x) and (en.x + 60 < x + w)) or ((en.x + 83 - 50 > x) and (en.x + 83 < x + w)):
+                            if y > en.y - h:
+                                en.attack = True
+                                zombie_attack.play()
+                    if en.attack:
+                        en.attackcircle += 1
+                    if en.attackcircle > 11:
+                        en.attack = False
+                        en.last_attack = 0
+                        en.attackcircle = 0
+                        if ((en.x > x) and (en.x + 60 < x + w)) or ((en.x + 83 - 50 > x) and (en.x + 83 < x + w)):
+                            if y + 76 > en.y and not (non_damage):
+                                damm = False
+                                hero_health -= 1
+                                if en.left:
+                                    x -= fenatt
+                                else:
+                                    x += fenatt
+                                if hero_health > 0:
+                                    hit = True
+                                    hit_s.play()
+                                    hitcircle = 0
+                                else:
+                                    die()
+
+            for bullet in bullets:
+                if bullet.x < xw and bullet.x > 0:
+                    bullet.x += bullet.speed
+                else:
+                    bullets.pop(bullets.index(bullet))
+
+            for en in enemies:
+                for bullet in bullets:
                     if (bullet.x > (en.x + 15)) and (bullet.x < (en.x + 68)):
                         rem_bul.append(bullet)
                         zombie_hit.play()
@@ -1857,49 +1582,340 @@ while True:  # главный цикл
                             die_en.append(en)
                             kills += 1
                             circlekills += 1
-                        break
 
-            for bul in rem_bul:
-                bullets.pop(bullets.index(bul))
-            rem_bul = []
+                for bul in rem_bul:
+                    bullets.pop(bullets.index(bul))
+                rem_bul = []
 
-        for en in die_en:
-            if en in enemies:
-                enemies.pop(enemies.index(en))
-            en.diecircle += 1
+            for en in die_en:
+                if en in enemies:
+                    enemies.pop(enemies.index(en))
+                en.diecircle += 1
 
-        if jump:
-            move = -jumpSpeed + g * k
-            k += 1
-            if move + y > yw - h - downLine:
-                move = yw - h - downLine - y
+            if jump:
+                move = -jumpSpeed + g * k
+                k += 1
+                if move + y > yw - h - downLine:
+                    move = yw - h - downLine - y
+                    k = 0
+                    jump = False
+                    jumps = 0
+                yc = move
+            x = x + xc
+            y = y + yc
+
+            if x < 0:
+                x = 0
+
+            if x > xw - w:
+                x = xw - w
+
+            if y == yw - h - downLine:
+                lastx = x
+
+            drawWindow()
+
+        fires = []
+        k2 = 0
+        boss_en = Boss(1183, yw - 128 - downLine, 9, 5)  ###
+        boss_en.bombs = []
+        boss_en.bb = []
+        for rock in rocks_t:
+            rock.chance = (250, 275, 225, 150)
+    if adventure:
+        history(hist3)
+        while play:  # Битва с боссом
+            clock.tick(30)
+
+            if gunattack:
+                guncount += 1
+
+            lastpause += 1
+
+            if k2 == 20:
+                fires.append(Fire(0, 496, window))
+                fires.append(Fire(1070, 496, window))
+            if k2 == 40:
+                fires.append(Fire(60, 496, window))
+                fires.append(Fire(1010, 496, window))
+            if k2 == 60:
+                fires.append(Fire(120, 496, window))
+                fires.append(Fire(950, 496, window))
+
+            boss_en.move(x)
+
+            if k2 % 15 == 0:
+                for fire in fires:
+                    if ((x + 43 < fire.x and (x + 88) > fire.x) or (x + 43 < (fire.x + 60) and x + 43 > fire.x)) and (
+                                y + 116) > 555:
+                        if not (non_damage):
+                            hero_health -= 1
+                            if hero_health > 0:
+                                hit = True
+                                hit_s.play()
+                                hitcircle = 0
+                            else:
+                                die()
+                            break
+
+            if circlekills == 10:  # Добавляет единицу hp за количество фрагов, кратное 10
+                hill_s.play()
+                if hero_health < max_hero_health:
+                    hero_health += 1
+                circlekills = 0
+
+            if attack:
+                attackcircle += 1
+                if attackcircle > 12:
+                    attack = False
+                    attackcircle = 0
+
+            if hit:
+                hitcircle += 1
+                non_damage = True
+                if hitcircle > 2:
+                    hit = False
+                    hitcircle = 0
+
+            if non_damage:
+                non_damcircle += 1
+                if non_damcircle > 45:
+                    non_damage = False
+                    non_damcircle = 0
+
+            if gunattack:
+                lastgunattack += 1
+            if lastgunattack > 12:
+                gunattack = False
+                lastgunattack = 0
+
+            k1 += 1
+            k2 += 1
+
+            enemyAnimCount += 1
+
+            xc = 0
+            yc = 0
+            pygame.time.delay(25)
+
+            keys = pygame.key.get_pressed()
+
+            if (joy.get_button(7) or keys[pygame.K_ESCAPE]) and lastpause > 5:
+                st = time.clock()
+                pause()
+                pause_time += time.clock() - st
+                pauseb = True
+                lastpause = 0
+
+            if (joy.get_button(2) or keys[pygame.K_x]) and not (keys[pygame.K_LEFT]) and not (
+                    keys[pygame.K_RIGHT]) and not (
+                    jump) and not (hit):
+                attack = True
+                if lastMove == 'left':
+                    xa1 = x + 3
+                    xa2 = x + 40
+                else:
+                    xa1 = x + 115
+                    xa2 = x + 88
+
+            if attack and attackcircle == 6:
+                if (xa1 > (boss_en.x + 40)) and (xa1 < (boss_en.x + 88)) or (xa2 > (boss_en.x + 40)) and (
+                            xa2 < (boss_en.x + 88)):
+                    attack_s.play()
+                    boss_en.get_dam(2)
+
+                else:
+                    for en in enemies:
+                        if (xa1 > (en.x + 13)) and (xa1 < (en.x + 66)) or (xa2 > (en.x + 13)) and (xa2 < (en.x + 66)):
+                            attack_s.play()
+                            zombie_hit.play()
+                            if en.health > damage_att:
+                                en.health -= damage_att
+                                en.hurt = True
+                            else:
+                                die_en.append(en)
+                                kills += 1
+                                circlekills += 1
+                            if lastMove == 'left':
+                                en.x -= fhatt
+                            else:
+                                en.x += fhatt
+                            break
+
+
+            elif (joy.get_button(3) or keys[pygame.K_z]) and not (keys[pygame.K_LEFT]) and not (
+                    keys[pygame.K_RIGHT]) and not (
+                    jump) and not (hit):
+                if guncount > 12 and not gunattack:
+                    if hint == 2:
+                        hint = 3
+                    if lastMove == 'right':
+                        side = 1
+                    else:
+                        side = -1
+                    gunattack = True
+                    gunattack_s.play()
+                    bullets.append(Plasma(round(x + w // 2), round(y + h // 2), side))
+                    guncount = 0
+
+            if (joy.get_hat(0) == (-1, 0) or keys[pygame.K_LEFT] or joy.get_axis(0) < -0.05 or (
+                            x > 863 and k2 < 70)) and not (attack) and not (
+                    gunattack):
+                xc = -speed
+                left = True
+                right = False
+                lastMove = 'left'
+
+            elif (joy.get_hat(0) == (1, 0) or keys[pygame.K_RIGHT] or joy.get_axis(0) > 0.05 or (
+                            x < 140 and k2 < 70)) and not (attack) and not (
+                    gunattack):
+                xc = speed
+                left = False
+                right = True
+                lastMove = 'right'
+
+            else:
+                left = False
+                right = False
+
+            if (joy.get_button(0) or keys[pygame.K_UP]) and not (hit) and not (attack) and not (gunattack) and (
+                            jumps == 0 or k >= 3 and jumps == 1):
                 k = 0
-                jump = False
-                jumps = 0
-            yc = move
-        x = x + xc
-        y = y + yc
+                jumps += 1
+                jump = True
 
-        if x < 0:
-            x = 0
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                if event.type == pygame.MOUSEMOTION and pygame.mouse.get_focused():
+                    pygame.mouse.set_visible(False)
+                    cursor_sprites.update(*event.pos)
 
-        if x > xw - w:
-            x = xw - w
+            damm = True
+            for en in enemies:
+                if damm:
+                    en.last_attack += 1
+                    en.move(lastx)
+                    if en.hurt:
+                        en.hurtcircle += 1
+                    if en.hurtcircle > 5:
+                        en.hurt = False
+                        en.hurtcircle = 0
+                    if not (en.hurt) and (en.last_attack > 5):
+                        if ((en.x > x) and (en.x + 60 < x + w)) or ((en.x + 83 - 50 > x) and (en.x + 83 < x + w)):
+                            if y > en.y - h:
+                                en.attack = True
+                                zombie_attack.play()
+                    if en.attack:
+                        en.attackcircle += 1
+                    if en.attackcircle > 11:
+                        en.attack = False
+                        en.last_attack = 0
+                        en.attackcircle = 0
+                        if ((en.x > x) and (en.x + 60 < x + w)) or ((en.x + 83 - 50 > x) and (en.x + 83 < x + w)):
+                            if y + 76 > en.y and not (non_damage):
+                                damm = False
+                                hero_health -= 1
+                                if en.left:
+                                    x -= fenatt
+                                else:
+                                    x += fenatt
+                                if hero_health > 0:
+                                    hit = True
+                                    hit_s.play()
+                                    hitcircle = 0
+                                else:
+                                    die()
+            if ((x + 35) <= (boss_en.x + 35) and (x + 93) >= (boss_en.x + 35)) or (
+                            (x + 93) >= (boss_en.x + 93) and (x + 35) <= (boss_en.x + 93)):
+                if y >= 400 and not (non_damage) and not (boss_en.crouch):
+                    hero_health -= 1
+                    if boss_en.pos == 'right':
+                        x -= 50
+                    else:
+                        x += 50
+                    if hero_health > 0:
+                        hit = True
+                        hit_s.play()
+                        hitcircle = 0
+                    else:
+                        die()
 
-        if y == yw - h - downLine:
-            lastx = x
+            if boss_en.attack_check() and not (non_damage):
+                hero_health -= 1
+                if hero_health > 0:
+                    hit = True
+                    hit_s.play()
+                    hitcircle = 0
+                else:
+                    die()
 
-        drawWindow()
-        if boss_en.end:
-            result = round(time.clock() - start_time - pause_time)
-            result = str(result // 60) + ' min ' + str(result % 60) + ' sec'
-            pygame.mixer.music.stop()
-            pygame.mixer.music.load('data/Sounds/music.ogg')
-            pygame.mixer.music.play(-1)
-            pygame.mixer.music.set_volume(0.4)
-            end()
-            player_name = input_name(window)
-            leaderboard()
-            break
+            for bullet in bullets:
+                if bullet.x < xw and bullet.x > 0:
+                    bullet.x += bullet.speed
+                else:
+                    bullets.pop(bullets.index(bullet))
+
+            for bullet in bullets:
+                if (bullet.x > (boss_en.x + 40)) and (bullet.x < (boss_en.x + 88)):
+                    rem_bul.append(bullet)
+                    boss_en.get_dam(1)
+                    boss_en.hit()
+                else:
+                    for en in enemies:
+                        if (bullet.x > (en.x + 15)) and (bullet.x < (en.x + 68)):
+                            rem_bul.append(bullet)
+                            zombie_hit.play()
+                            if en.health > damage_bul:
+                                en.health -= damage_bul
+                                en.hurt = True
+                            else:
+                                die_en.append(en)
+                                kills += 1
+                                circlekills += 1
+                            break
+
+                for bul in rem_bul:
+                    bullets.pop(bullets.index(bul))
+                rem_bul = []
+
+            for en in die_en:
+                if en in enemies:
+                    enemies.pop(enemies.index(en))
+                en.diecircle += 1
+
+            if jump:
+                move = -jumpSpeed + g * k
+                k += 1
+                if move + y > yw - h - downLine:
+                    move = yw - h - downLine - y
+                    k = 0
+                    jump = False
+                    jumps = 0
+                yc = move
+            x = x + xc
+            y = y + yc
+
+            if x < 0:
+                x = 0
+
+            if x > xw - w:
+                x = xw - w
+
+            if y == yw - h - downLine:
+                lastx = x
+
+            drawWindow()
+            if boss_en.end:
+                break
+        result = round(time.clock() - start_time - pause_time)
+        result = str(result // 60) + ' min ' + str(result % 60) + ' sec'
+        pygame.mixer.music.stop()
+        pygame.mixer.music.load('data/Sounds/music.ogg')
+        pygame.mixer.music.play(-1)
+        pygame.mixer.music.set_volume(0.4)
+        end()
+        player_name = input_name(window)
+        leaderboard()
 
 pygame.quit()
