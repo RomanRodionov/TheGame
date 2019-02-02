@@ -2,6 +2,7 @@ import pygame
 import random
 import time
 import os
+import sys
 
 xw = 1131
 yw = 707
@@ -26,6 +27,7 @@ else:
 
 pygame.mixer.init()
 window = pygame.display.set_mode((xw, yw))  # , pygame.FULLSCREEN)
+fullscreen = False
 
 pygame.display.set_caption("Guardians of the Galaxy - Starlord Adventures")
 
@@ -37,7 +39,7 @@ max_enemy_health = 5
 downLine = 138
 damage_bul = 1
 damage_att = 3
-kills_to_boss = 1  ###
+kills_to_boss = 25 ###
 
 w = 128
 h = 128
@@ -75,6 +77,11 @@ enemyAnimCount = 0  # Счетчик последовательности ани
 guncount = 20
 all_sprites = pygame.sprite.Group()
 cursor_sprites = pygame.sprite.Group()
+
+
+def terminate():
+    pygame.quit()
+    sys.exit()
 
 
 def load_image(name, colorkey=None):
@@ -139,7 +146,7 @@ def draw_time():
 
 class Particle(pygame.sprite.Sprite):
     fire = [load_image('b1.png'), load_image('b2.png'), load_image('b3.png')]
-    for scale in (9, 12, 22):
+    for scale in (7, 10, 15):
         for x in range(len(fire)):
             fire.append(pygame.transform.scale(fire[x], (scale, scale)))
 
@@ -195,6 +202,9 @@ class Enemy:
         self.diecircle = 0
         self.last_attack = 0
         self.k = 0
+        self.s = pygame.Surface((9, 5))
+        self.s.set_alpha(128)
+        self.s.fill((255, 0, 0))
 
     def move(self, x):
         if not (self.attack):
@@ -211,6 +221,11 @@ class Enemy:
 
     def draw(self, window, image):
         window.blit(image, (self.x, self.y))
+        if self.diecircle == 0:
+            for i in range(self.health):
+                window.blit(self.s, (self.x + i * 10 + 23, self.y - 10))
+        window.blit(shadow_im, (self.x + 15, self.y + 70))
+
 
     def attack(self, x, y):
         if not (self.hurt):
@@ -452,6 +467,7 @@ class Boss(Enemy):
             window.blit(self.bomb, (x[0], x[1]))
         if self.attack:
             window.blit(self.plane, (self.ga * 4 - 636, -20))
+        window.blit(shadow_im, (self.x + 32, 550))
 
     def hit(self):
         if self.health <= 0:
@@ -595,6 +611,8 @@ def drawWindow():
         elif lastMove == 'left':
             window.blit(starlordleft, (x, y))
 
+    window.blit(shadow_im, (x + 475 - y, 550))
+
     for bullet in bullets:
         bullet.draw(window, bullet_image)
 
@@ -636,6 +654,7 @@ def drawWindow():
     draw_time()
     all_sprites.update()
     all_sprites.draw(window)
+    buttons.draw(window)
     cursor_sprites.draw(window)
 
     pygame.display.update()
@@ -684,7 +703,6 @@ def drawTrainingWindow():
             window.blit(starlordright, (x, y))
         elif lastMove == 'left':
             window.blit(starlordleft, (x, y))
-
     for bullet in bullets:
         bullet.draw(window, bullet_image)
 
@@ -712,7 +730,6 @@ pause1_s.set_volume(0.1)
 cursor = load_image('cursor.png')
 Arrow(cursor_sprites)
 bg_menu = load_image('bgmenu.png')
-logo = load_image("logo.png")
 bg = load_image('bg.png')
 bgsh = load_image('bgsh.png')
 bg_die = [
@@ -872,6 +889,14 @@ zombie_dieLeft = [
     load_image("Zombie/Die/left5.png"),
     load_image("Zombie/Die/left6.png")
 ]
+title = [
+    load_image("title/logo1.png"),
+    load_image("title/logo2.png"),
+    load_image("title/logo3.png"),
+    load_image("title/logo4.png"),
+    load_image("title/logo5.png")
+]
+title += [title[-2], title[-3], title[-4], title[-5]]
 arl = load_image("arl.png")
 arr = load_image("arr.png")
 arup = load_image("arup.png")
@@ -881,6 +906,10 @@ boss_bgicon = load_image('bgicon2.jpg')
 boss_headicon = load_image("headicon2.png")
 boss_bodyicon = load_image("bodyicon2.png")
 boss_health = load_image("health2.png")
+exit_im = load_image("buttons/exit.png")
+screen_im = load_image("buttons/screen.png")
+pause_im = load_image("buttons/pause.png")
+shadow_im = load_image("shadow.png")
 
 
 def input_name(screen):
@@ -933,24 +962,63 @@ def input_name(screen):
         clock.tick(30)
 
 
+def nothing():
+    pass
+
+
+def false_return():
+    return False
+
+
+def change_resolution():
+    global fullscreen, window
+    if fullscreen:
+        fullscreen = False
+        window = pygame.display.set_mode((xw, yw))
+    else:
+        fullscreen = True
+        window = pygame.display.set_mode((xw, yw), pygame.FULLSCREEN)
+    return True
+
+
 class Button(pygame.sprite.Sprite):
-    def __init__(self, group, text, x, y):
+    def __init__(self, group, text, x, y, func=nothing, image=False):
         super().__init__(group)
         self.mode = text
         self.group = group
-        font = pygame.font.Font(None, 50)
-        self.text = font.render(text, True, (255, 69, 0))
-        self.active_image = pygame.Surface((350, 50),
-                                           pygame.SRCALPHA, 32)
+        self.func = func
+        if image:
+            self.active_image = image
+            self.unactive_image = image
 
-        pygame.draw.rect(self.active_image, (64, 224, 208),
-                         (0, 0, 300, 40), 0)
-        self.active_image.blit(self.text, ((350 - self.text.get_width()) // 2 - 20, 5))
-        self.unactive_image = pygame.Surface((350, 50),
-                                             pygame.SRCALPHA, 32)
-        pygame.draw.rect(self.unactive_image, (255, 165, 0),
-                         (0, 0, 300, 40), 0)
-        self.unactive_image.blit(self.text, ((350 - self.text.get_width()) // 2 - 20, 5))
+        else:
+            s = pygame.Surface((304, 44))
+            s.set_alpha(128)
+            s.fill((72, 78, 114))
+            font = pygame.font.Font(None, 50)
+            self.text = font.render(text, True, (255, 69, 0))
+            self.text1 = font.render(text, True, (255, 255, 255))
+            self.text2 = font.render(text, True, (39, 87, 245))
+            self.active_image = pygame.Surface((304, 44),
+                                               pygame.SRCALPHA, 32)
+            self.active_image.blit(s, (0, 0))
+            pygame.draw.rect(self.active_image, (255, 255, 255),
+                             (0, 0, 302, 42), 0)
+            pygame.draw.rect(self.active_image, (64, 224, 208),
+                             (2, 2, 300, 40), 0)
+            self.active_image.blit(self.text2, ((350 - self.text.get_width()) // 2 - 21, 4))
+            self.active_image.blit(self.text2, ((350 - self.text.get_width()) // 2 - 20, 5))
+            self.active_image.blit(self.text1, ((350 - self.text.get_width()) // 2 - 19, 6))
+            self.unactive_image = pygame.Surface((304, 44),
+                                                 pygame.SRCALPHA, 32)
+            self.unactive_image.blit(s, (0, 0))
+            pygame.draw.rect(self.unactive_image, (255, 255, 255),
+                             (0, 0, 302, 42), 0)
+            pygame.draw.rect(self.unactive_image, (255, 165, 0),
+                             (2, 2, 300, 40), 0)
+            self.unactive_image.blit(self.text, ((350 - self.text.get_width()) // 2 - 21, 4))
+            self.unactive_image.blit(self.text, ((350 - self.text.get_width()) // 2 - 20, 5))
+            self.unactive_image.blit(self.text1, ((350 - self.text.get_width()) // 2 - 19, 6))
         self.image = self.unactive_image
         self.rect = self.image.get_rect()
         self.rect.x = x
@@ -959,20 +1027,50 @@ class Button(pygame.sprite.Sprite):
     def check(self, pos):
         if self.rect.collidepoint(pos):
             self.image = self.active_image
-            return self.mode
+            return self.mode, self.func
         else:
             self.image = self.unactive_image
             return False
 
 
+class AnimatedSprite(pygame.sprite.Sprite):
+    def __init__(self, group, frames, x, y, period, frequence):
+        super().__init__(group)
+        self.rect = frames[0].get_rect()
+        self.period = period
+        self.frequence = frequence
+        self.frames = frames
+        self.cur_frame = 0
+        self.image = self.frames[self.cur_frame]
+        self.rect = self.rect.move(x, y)
+        self.moving = True
+
+    def update(self):
+        self.cur_frame += 1
+        if not self.moving:
+            if self.cur_frame >= self.period:
+                self.moving = True
+                self.cur_frame = 0
+        else:
+            if self.cur_frame // self.frequence >= len(self.frames):
+                self.moving = False
+                self.cur_frame = 0
+            else:
+                self.image = self.frames[self.cur_frame // self.frequence]
+
+
 def start_window():
     global k1, bg_coords, pause
-
+    title_group = pygame.sprite.Group()
+    AnimatedSprite(title_group, title, 50, 20, 120, 2)
     buttons = pygame.sprite.Group()
-    button1 = Button(buttons, 'Adventure', 400, 430)
-    button2 = Button(buttons, 'Zen-mode', 400, 490)
-    button3 = Button(buttons, 'Tutorial', 400, 550)
-    button4 = Button(buttons, 'Settings', 400, 610)
+    button1 = Button(buttons, 'Adventure', 400, 340)
+    button2 = Button(buttons, 'Zen-mode', 400, 400)
+    button3 = Button(buttons, 'Tutorial', 400, 460)
+    button4 = Button(buttons, 'Leaders', 400, 520, leaderboard)
+    button6 = Button(buttons, 'EXIT', 400, 580, terminate)
+    button7 = Button(buttons, 'resolution', 1020, 620, change_resolution, screen_im)
+
     pause0_s.play()
     time = 0
     while True:
@@ -1001,9 +1099,10 @@ def start_window():
 
         if bg_coords[0] < -xw:
             bg_coords = [0, xw]
+        title_group.update()
 
-        window.blit(logo, [50, 100])
-        
+        title_group.draw(window)
+
         buttons.draw(window)
         cursor_sprites.draw(window)
         pygame.display.update()
@@ -1013,6 +1112,9 @@ def pause():
     global k1, bg_coords, pause, pause_time
     white = [255, 255, 255]
     font = pygame.font.Font(None, 50)
+    buttons = pygame.sprite.Group()
+    button1 = Button(buttons, 'Exit', 5, 5, false_return, exit_im)
+    button2 = Button(buttons, 'resolution', 5, 85, change_resolution, screen_im)
     text = font.render("Press space to continue", True, white)
     pygame.mixer.music.pause()
     time = 0
@@ -1028,6 +1130,13 @@ def pause():
             if event.type == pygame.MOUSEMOTION and pygame.mouse.get_focused():
                 pygame.mouse.set_visible(False)
                 cursor_sprites.update(*event.pos)
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                for button in buttons:
+                    if button.check(event.pos):
+                        if not button.check(event.pos)[1]():
+                            pause1_s.play()
+                            pygame.mixer.music.unpause()
+                            return False
 
         for x in range(2):
             window.blit(bg_menu, (bg_coords[x], 0))
@@ -1037,7 +1146,7 @@ def pause():
             bg_coords = [0, xw]
 
         if not (k1 % 30 > 15):
-            window.blit(text, [400, 570])
+            window.blit(text, [400, 470])
 
         keys = pygame.key.get_pressed()
 
@@ -1045,7 +1154,24 @@ def pause():
                 6) or joy.get_button(7) or keys[pygame.K_ESCAPE]) and time > 5:
             pause1_s.play()
             pygame.mixer.music.unpause()
-            break
+            return True
+        s = pygame.Surface((20, 707))
+        s.set_alpha(148)
+        s.fill((230, 250, 255))
+        window.blit(s, (94, 0))
+        s.set_alpha(128)
+        window.blit(s, (114, 0))
+        s.set_alpha(108)
+        window.blit(s, (134, 0))
+        s.set_alpha(88)
+        window.blit(s, (154, 0))
+        pygame.draw.rect(window, (160, 82, 45), (0, 0, 85, 707))
+        pygame.draw.rect(window, (139, 69, 19), (85, 0, 9, 707))
+        sh = pygame.Surface((4, 707))
+        sh.set_alpha(128)
+        sh.fill((84, 44, 4))
+        window.blit(sh, (86, 0))
+        buttons.draw(window)
         cursor_sprites.draw(window)
         pygame.display.update()
 
@@ -1099,18 +1225,30 @@ def die():
     global x, y, play
     play = False
     white = [255, 255, 255]
-    font = pygame.font.Font(None, 50)
-    text = font.render("GAME OVER", True, white)
+    font1 = pygame.font.Font(None, 50)
+    text = font1.render("Press space to try again", True, white)
+    text1 = font1.render("GAME OVER", True, white)
+    font2 = pygame.font.Font(None, 36)
+    text2 = font2.render("you died", True, (240, 72, 100))
     pygame.mixer.music.stop()
     time = 0
     k = 0
-    while True:
+    alpha = 0
+    s = pygame.Surface((1131, 707))
+    s.fill((0, 0, 0))
+    s.set_alpha(alpha)
+    flag = True
+    while flag:
 
         clock.tick(30)
         time += 1
+        if alpha < 255:
+            alpha += 5
+            s.set_alpha(alpha)
 
-        y += -25 + 1 * k
-        k += 1
+        if y < 1131:
+            y += -25 + 1 * k
+            k += 1
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -1119,22 +1257,24 @@ def die():
         if time // 10 < 5:
             window.blit(bg_die[time // 10], (0, 0))
         else:
-            break
+            window.blit(bg_die[-1], (0, 0))
+        window.blit(s, (0, 0))
+        if y < 1131:
+            window.blit(staying, (x, y))
 
-        window.blit(staying, (x, y))
+        window.blit(text1, [450, 50])
+        window.blit(text2, [500, 90])
+        window.blit(text, [355, 470])
 
-        window.blit(text, [450, 50])
-
-        if time // 10 > 10:
-            pygame.quit()
+        for event in pygame.event.get():
+            if event.type == pygame.MOUSEBUTTONDOWN or event.type == pygame.KEYDOWN:
+                flag = False
 
         pygame.display.update()
 
 
 def leaderboard():
     bg = load_image('bgt.jpg')
-    with open('leaderboard.txt', 'a') as file:
-        file.write(player_name + '$' + str(round(time.clock() - start_time - pause_time)) + '\n')
     board = [line.rstrip('\n').split('$') for line in open('leaderboard.txt', 'r').readlines()]
     for n in range(len(board)):
         board[n] = (int(board[n][1]), board[n][0])
@@ -1179,7 +1319,8 @@ while True:  # главный цикл
     pygame.mixer.music.load('data/Sounds/music.ogg')
     pygame.mixer.music.play(-1)
     pygame.mixer.music.set_volume(0.4)
-    mode = start_window()
+    mode, func = start_window()
+    func()
     adventure = mode == 'Adventure'
     zen = mode == 'Zen-mode'
     settings = mode == 'Settings'
@@ -1233,8 +1374,10 @@ while True:  # главный цикл
     pygame.mixer.music.load('data/Sounds/training.ogg')
     pygame.mixer.music.play(-1)
     pygame.mixer.music.set_volume(0.2)
-    skip_text = font.render('Press SPACE to skip', True, color_of_text)
+    skip_text = font.render('Press SPACE to exit', True, color_of_text)
     hint = 0
+    buttons = pygame.sprite.Group()
+    pause_b = Button(buttons, 'pause', 540, 50, pause, pause_im)
     if tutorial:
         history(hist1)
         while play:  # Обучение
@@ -1450,7 +1593,7 @@ while True:  # главный цикл
 
             if (joy.get_button(7) or keys[pygame.K_ESCAPE]) and lastpause > 5:
                 st = time.clock()
-                pause()
+                play = pause()
                 pause_time += time.clock() - st
                 lastpause = 0
 
@@ -1527,6 +1670,10 @@ while True:  # главный цикл
                 if event.type == pygame.MOUSEMOTION and pygame.mouse.get_focused():
                     pygame.mouse.set_visible(False)
                     cursor_sprites.update(*event.pos)
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    for button in buttons:
+                        if button.check(event.pos):
+                            button.check(event.pos)[1]()
 
             damm = True
             for en in enemies:
@@ -1563,6 +1710,7 @@ while True:  # главный цикл
                                     hitcircle = 0
                                 else:
                                     die()
+                                    play = False
 
             for bullet in bullets:
                 if bullet.x < xw and bullet.x > 0:
@@ -1617,13 +1765,12 @@ while True:  # главный цикл
 
         fires = []
         k2 = 0
-        boss_en = Boss(1183, yw - 128 - downLine, 9, 5)  ###
+        boss_en = Boss(1183, yw - 128 - downLine, 9, 10)  ###
         boss_en.bombs = []
         boss_en.bb = []
         for rock in rocks_t:
             rock.chance = (250, 275, 225, 150)
-    if adventure:
-        history(hist3)
+    if adventure and play:
         while play:  # Битва с боссом
             clock.tick(30)
 
@@ -1656,6 +1803,7 @@ while True:  # главный цикл
                                 hitcircle = 0
                             else:
                                 die()
+                                play = False
                             break
 
             if circlekills == 10:  # Добавляет единицу hp за количество фрагов, кратное 10
@@ -1702,7 +1850,7 @@ while True:  # главный цикл
 
             if (joy.get_button(7) or keys[pygame.K_ESCAPE]) and lastpause > 5:
                 st = time.clock()
-                pause()
+                play = pause()
                 pause_time += time.clock() - st
                 pauseb = True
                 lastpause = 0
@@ -1790,6 +1938,10 @@ while True:  # главный цикл
                 if event.type == pygame.MOUSEMOTION and pygame.mouse.get_focused():
                     pygame.mouse.set_visible(False)
                     cursor_sprites.update(*event.pos)
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    for button in buttons:
+                        if button.check(event.pos):
+                            button.check(event.pos)[1]()
 
             damm = True
             for en in enemies:
@@ -1826,6 +1978,7 @@ while True:  # главный цикл
                                     hitcircle = 0
                                 else:
                                     die()
+                                    play = False
             if ((x + 35) <= (boss_en.x + 35) and (x + 93) >= (boss_en.x + 35)) or (
                             (x + 93) >= (boss_en.x + 93) and (x + 35) <= (boss_en.x + 93)):
                 if y >= 400 and not (non_damage) and not (boss_en.crouch):
@@ -1849,6 +2002,7 @@ while True:  # главный цикл
                     hitcircle = 0
                 else:
                     die()
+                    play = False
 
             for bullet in bullets:
                 if bullet.x < xw and bullet.x > 0:
@@ -1908,14 +2062,16 @@ while True:  # главный цикл
             drawWindow()
             if boss_en.end:
                 break
-        result = round(time.clock() - start_time - pause_time)
-        result = str(result // 60) + ' min ' + str(result % 60) + ' sec'
-        pygame.mixer.music.stop()
-        pygame.mixer.music.load('data/Sounds/music.ogg')
-        pygame.mixer.music.play(-1)
-        pygame.mixer.music.set_volume(0.4)
-        end()
-        player_name = input_name(window)
-        leaderboard()
+        if play:
+            result = round(time.clock() - start_time - pause_time)
+            result = str(result // 60) + ' min ' + str(result % 60) + ' sec'
+            pygame.mixer.music.stop()
+            pygame.mixer.music.load('data/Sounds/music.ogg')
+            pygame.mixer.music.play(-1)
+            pygame.mixer.music.set_volume(0.4)
+            end()
+            with open('leaderboard.txt', 'a') as file:
+                file.write(input_name(window) + '$' + str(round(time.clock() - start_time - pause_time)) + '\n')
+            leaderboard()
 
 pygame.quit()
