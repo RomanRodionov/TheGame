@@ -1275,7 +1275,7 @@ def die():
 
 def leaderboard():
     bg = load_image('bgt.jpg')
-    board = [line.rstrip('\n').split('$') for line in open('leaderboard.txt', 'r').readlines()]
+    board = [line.rstrip('\n').split('$') for line in open('data/leaderboard.txt', 'r').readlines()]
     for n in range(len(board)):
         board[n] = (int(board[n][1]), board[n][0])
     board.sort()
@@ -1671,9 +1671,12 @@ while True:  # главный цикл
                     pygame.mouse.set_visible(False)
                     cursor_sprites.update(*event.pos)
                 if event.type == pygame.MOUSEBUTTONDOWN:
-                    for button in buttons:
-                        if button.check(event.pos):
-                            button.check(event.pos)[1]()
+                    if pause_b.check(event.pos):
+                        st = time.clock()
+                        play = pause()
+                        pause_time += time.clock() - st
+                        pauseb = True
+                        lastpause = 0
 
             damm = True
             for en in enemies:
@@ -1939,9 +1942,12 @@ while True:  # главный цикл
                     pygame.mouse.set_visible(False)
                     cursor_sprites.update(*event.pos)
                 if event.type == pygame.MOUSEBUTTONDOWN:
-                    for button in buttons:
-                        if button.check(event.pos):
-                            button.check(event.pos)[1]()
+                    if pause_b.check(event.pos):
+                        st = time.clock()
+                        play = pause()
+                        pause_time += time.clock() - st
+                        pauseb = True
+                        lastpause = 0
 
             damm = True
             for en in enemies:
