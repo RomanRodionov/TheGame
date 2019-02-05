@@ -39,7 +39,7 @@ max_enemy_health = 5
 downLine = 138
 damage_bul = 1
 damage_att = 3
-kills_to_boss = 25 ###
+kills_to_boss = 25  ###
 
 w = 128
 h = 128
@@ -225,7 +225,6 @@ class Enemy:
             for i in range(self.health):
                 window.blit(self.s, (self.x + i * 10 + 23, self.y - 10))
         window.blit(shadow_im, (self.x + 15, self.y + 70))
-
 
     def attack(self, x, y):
         if not (self.hurt):
@@ -2076,7 +2075,7 @@ while True:  # главный цикл
             pygame.mixer.music.play(-1)
             pygame.mixer.music.set_volume(0.4)
             end()
-            with open('leaderboard.txt', 'a') as file:
+            with open('data/leaderboard.txt', 'a') as file:
                 file.write(input_name(window) + '$' + str(round(time.clock() - start_time - pause_time)) + '\n')
             leaderboard()
 
