@@ -3,6 +3,7 @@ import random
 import time
 import os
 import sys
+from math import sin
 
 xw = 1131
 yw = 707
@@ -39,7 +40,7 @@ max_enemy_health = 5
 downLine = 138
 damage_bul = 1
 damage_att = 3
-kills_to_boss = 25  ###
+kills_to_boss = 3  ###
 
 w = 128
 h = 128
@@ -361,7 +362,8 @@ class Boss(Enemy):
                 self.bombs[r][1] += 15
             self.ga += 1
             if self.ga % 50 == 0:
-                self.bombs.append([self.ga * 4 - 276, 80])
+                shake = sin(self.ga / 10) * 12
+                self.bombs.append([self.ga * 4 - 376, 80 + shake])
             if self.ga > 460:
                 self.attack = False
                 self.crouch = True
@@ -465,7 +467,8 @@ class Boss(Enemy):
         for x in self.bombs:
             window.blit(self.bomb, (x[0], x[1]))
         if self.attack:
-            window.blit(self.plane, (self.ga * 4 - 636, -20))
+            shake = sin(self.ga / 10) * 12
+            window.blit(self.plane, (self.ga * 4 - 636, -20 + shake))
         window.blit(shadow_im, (self.x + 32, 550))
 
     def hit(self):
@@ -633,21 +636,14 @@ def drawWindow():
         boss_en.draw(window, None)
 
     window.blit(bgicon, (0, 0))
-    window.blit(bodyicon, (0, 0))
+    window.blit(bodyicon, (-20, -20))
 
     if boss:
-        window.blit(boss_bgicon, (939, 0))
-        window.blit(boss_bodyicon, (939, 0))
-
-    if k1 % 12 == 0:
-        normal = [0, 1]
-    elif k1 % 8 == 0:
-        normal = [0, 0]
-    elif k1 % 4 == 0:
-        normal = [0, 2]
-    window.blit(headicon, normal)
+        window.blit(boss_bgicon, (969, 0))
+        window.blit(boss_bodyicon, (959, -20))
+    window.blit(headicon, (-20, -21 + sin(k1 / 4)))
     if boss:
-        window.blit(boss_headicon, [939, normal[1] * 2])
+        window.blit(boss_headicon, [959, -21 + sin(k1 / 2)])
 
     draw_health()
     draw_time()
